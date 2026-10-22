@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { TOUR_PAGE_REGISTRY, DEFAULT_TOUR_PAGES } from './tourPageRegistry'
+import { TOUR_PAGE_REGISTRY, TOUR_PAGE_GROUPS, DEFAULT_TOUR_PAGES } from './tourPageRegistry'
 
 const EXPECTED_ORDER = [
   'about',
@@ -23,6 +23,12 @@ describe('TOUR_PAGE_REGISTRY', () => {
       expect(typeof entry.title, id).toBe('string')
       expect(entry.title.length, id).toBeGreaterThan(0)
       expect(isComponent(entry.component), id).toBe(true)
+    }
+  })
+
+  it('has a group from TOUR_PAGE_GROUPS for every entry', () => {
+    for (const [id, entry] of entries) {
+      expect(TOUR_PAGE_GROUPS, id).toContain(entry.group)
     }
   })
 
