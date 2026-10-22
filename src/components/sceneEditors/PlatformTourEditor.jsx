@@ -1,0 +1,193 @@
+import { EyebrowField, editorCardClass, fieldLabelClass, sectionTitleClass } from './BeatsEditorBlock'
+import { PLATFORM_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
+
+const SCENE_ID = 'platform-tour'
+
+export function currentPages(meta) {
+  const pages = meta?.pages
+  if (Array.isArray(pages) && pages.some((p) => typeof p?.sceneId === 'string')) return pages
+  return PLATFORM_TOUR_PAGES
+}
+
+export function movePage(list, index, direction) {
+  const target = index + direction
+  if (index < 0 || index >= list.length || target < 0 || target >= list.length) return [...list]
+  const next = [...list]
+  const moved = next[index]
+  next[index] = next[target]
+  next[target] = moved
+  return next
+}
+
+// A patch value of undefined removes that key from the page.
+export function setPage(list, index, patch) {
+  return list.map((page, i) => {
+    if (i !== index) return page
+    const merged = { ...page, ...patch }
+    return Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined))
+  })
+}
+
+export function removePage(list, index) {
+  return list.filter((_, i) => i !== index)
+}
+
+export function addPage(list, sceneId) {
+  return [...list, { sceneId }]
+}
+
+const buttonClass = (isDark) =>
+  `text-xs px-2 py-1 rounded border disabled:opacity-40 disabled:cursor-not-allowed ${
+    isDark
+      ? 'border-white/15 text-white/70 hover:bg-white/10'
+      : 'border-elastic-dev-blue/20 text-elastic-dark-ink/70 hover:bg-elastic-dev-blue/5'
+  }`
+
+export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadata, isDark, inputClass }) {
+  const meta = sceneMetadata?.[SCENE_ID] || {}
+  const update = (patch) => onUpdateSceneMetadata(SCENE_ID, { ...meta, ...patch })
+  const pages = currentPages(meta)
+  const available = Object.keys(TOUR_PAGE_REGISTRY).filter((id) => !pages.some((p) => p.sceneId === id))
+
+  const resetToDefaults = () => {
+    const rest = { ...meta }
+    delete rest.pages
+    onUpdateSceneMetadata(SCENE_ID, rest)
+  }
+
+  return (
+    <div className="space-y-6 mt-6">
+      <EyebrowField
+        value={meta.eyebrow || ''}
+        onChange={(eyebrow) => update({ eyebrow })}
+        placeholder="Elastic · Platform Tour"
+        inputClass={inputClass}
+        isDark={isDark}
+      />
+
+      <div>
+        <h3 className={sectionTitleClass(isDark)}>Pages</h3>
+        <div className="space-y-3 mt-3">
+          {pages.map((page, i) => {
+            const entry = TOUR_PAGE_REGISTRY[page.sceneId]
+            const defaultTitle = entry ? entry.title : page.sceneId
+            const label = page.title || defaultTitle
+            const hasBeats = Boolean(entry?.beats)
+            const holdId = `platform-tour-hold-${i}`
+            const checkId = `platform-tour-enabled-${i}`
+            return (
+              <div key={`${page.sceneId}-${i}`} className={editorCardClass(isDark)}>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label htmlFor={checkId} className={`flex items-center gap-2 text-sm ${isDark ? 'text-white' : 'text-elastic-dark-ink'}`}>
+                    <input
+                      id={checkId}
+                      type="checkbox"
+                      checked={page.enabled !== false}
+                      onChange={(e) => update({ pages: setPage(pages, i, { enabled: e.target.checked }) })}
+                    />
+                    {defaultTitle}
+                    {!entry && <span className="text-xs opacity-60">(not available)</span>}
+                  </label>
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      type="button"
+                      aria-label={`Move up ${label}`}
+                      className={buttonClass(isDark)}
+                      disabled={i === 0}
+                      onClick={() => update({ pages: movePage(pages, i, -1) })}
+                    >
+                      Move up
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move down ${label}`}
+                      className={buttonClass(isDark)}
+                      disabled={i === pages.length - 1}
+                      onClick={() => update({ pages: movePage(pages, i, 1) })}
+                    >
+                      Move down
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${label}`}
+                      className={buttonClass(isDark)}
+                      // Removing the last page would silently bring the defaults back.
+                      disabled={pages.length === 1}
+                      onClick={() => update({ pages: removePage(pages, i) })}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor={`platform-tour-title-${i}`} className={fieldLabelClass(isDark)}>Title</label>
+                    <input
+                      id={`platform-tour-title-${i}`}
+                      type="text"
+                      value={page.title || ''}
+                      onChange={(e) => update({ pages: setPage(pages, i, { title: e.target.value }) })}
+                      className={inputClass}
+                      placeholder={defaultTitle}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={holdId} className={fieldLabelClass(isDark)}>Hold (seconds)</label>
+                    <input
+                      id={holdId}
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      disabled={hasBeats}
+                      value={page.hold != null && !hasBeats ? page.hold / 1000 : ''}
+                      onChange={(e) => {
+                        const seconds = Number(e.target.value)
+                        const hasValue = e.target.value !== '' && Number.isFinite(seconds)
+                        update({
+                          pages: setPage(pages, i, { hold: hasValue ? Math.round(seconds * 1000) : undefined }),
+                        })
+                      }}
+                      className={inputClass}
+                      placeholder="default"
+                    />
+                    {hasBeats && (
+                      <p className={`text-xs mt-1 ${isDark ? 'text-white/50' : 'text-elastic-dev-blue/50'}`}>
+                        Timing follows the scene's own beats
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {available.length > 0 && (
+          <div className="mt-3">
+            <select
+              aria-label="Add page"
+              value=""
+              className={inputClass}
+              onChange={(e) => {
+                if (e.target.value) update({ pages: addPage(pages, e.target.value) })
+              }}
+            >
+              <option value="">Add a page...</option>
+              {available.map((id) => (
+                <option key={id} value={id}>
+                  {TOUR_PAGE_REGISTRY[id].title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <button type="button" className={buttonClass(isDark)} onClick={resetToDefaults}>
+          Reset to defaults
+        </button>
+      </div>
+    </div>
+  )
+}
