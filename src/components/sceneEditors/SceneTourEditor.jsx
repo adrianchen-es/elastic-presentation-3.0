@@ -1,7 +1,28 @@
 import { EyebrowField, editorCardClass, fieldLabelClass, sectionTitleClass } from './BeatsEditorBlock'
-import { DEFAULT_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
+import { DEFAULT_TOUR_PAGES, TOUR_PAGE_GROUPS, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
 
 const SCENE_ID = 'scene-tour'
+const OTHER_GROUP = 'Other'
+
+// Groups registry slides that are not yet in the tour, in TOUR_PAGE_GROUPS order.
+// Empty groups are omitted. Slides whose group is unknown go into a trailing 'Other' group.
+export function groupAvailable(registry, groups, usedIds) {
+  const used = new Set(usedIds)
+  const buckets = new Map(groups.map((group) => [group, []]))
+  const other = []
+  for (const id of Object.keys(registry)) {
+    if (used.has(id)) continue
+    const bucket = buckets.get(registry[id]?.group)
+    if (bucket) bucket.push(id)
+    else other.push(id)
+  }
+  const result = []
+  for (const [group, ids] of buckets) {
+    if (ids.length > 0) result.push({ group, ids })
+  }
+  if (other.length > 0) result.push({ group: OTHER_GROUP, ids: other })
+  return result
+}
 
 export function currentPages(meta) {
   const pages = meta?.pages
@@ -51,7 +72,11 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
   const update = (patch) => onUpdateSceneMetadata(SCENE_ID, { ...meta, ...patch })
   const pages = currentPages(meta)
   const enabledCount = pages.filter((p) => p.enabled !== false && TOUR_PAGE_REGISTRY[p.sceneId]).length
-  const available = Object.keys(TOUR_PAGE_REGISTRY).filter((id) => !pages.some((p) => p.sceneId === id))
+  const availableGroups = groupAvailable(
+    TOUR_PAGE_REGISTRY,
+    TOUR_PAGE_GROUPS,
+    pages.map((p) => p.sceneId),
+  )
 
   const resetToDefaults = () => {
     const rest = { ...meta }
@@ -70,7 +95,7 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
       />
 
       <div>
-        <h3 className={sectionTitleClass(isDark)}>Pages</h3>
+        <h3 className={sectionTitleClass(isDark)}>Slides</h3>
         <div className="space-y-3 mt-3">
           {pages.map((page, i) => {
             const entry = TOUR_PAGE_REGISTRY[page.sceneId]
@@ -169,21 +194,25 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
           })}
         </div>
 
-        {available.length > 0 && (
+        {availableGroups.length > 0 && (
           <div className="mt-3">
             <select
-              aria-label="Add page"
+              aria-label="Add slide"
               value=""
               className={inputClass}
               onChange={(e) => {
                 if (e.target.value) update({ pages: addPage(pages, e.target.value) })
               }}
             >
-              <option value="">Add a page...</option>
-              {available.map((id) => (
-                <option key={id} value={id}>
-                  {TOUR_PAGE_REGISTRY[id].title}
-                </option>
+              <option value="">Add a slide...</option>
+              {availableGroups.map(({ group, ids }) => (
+                <optgroup key={group} label={group}>
+                  {ids.map((id) => (
+                    <option key={id} value={id}>
+                      {TOUR_PAGE_REGISTRY[id].title}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

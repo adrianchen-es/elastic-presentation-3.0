@@ -1,16 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, fireEvent, cleanup, screen } from '@testing-library/react'
-import SceneTourEditor, { currentPages, movePage, setPage, removePage, addPage } from './SceneTourEditor'
-import { DEFAULT_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
+import SceneTourEditor, {
+  currentPages,
+  movePage,
+  setPage,
+  removePage,
+  addPage,
+  groupAvailable,
+} from './SceneTourEditor'
+import { DEFAULT_TOUR_PAGES, TOUR_PAGE_GROUPS, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
 
 afterEach(() => {
   cleanup()
 })
 
-function renderEditor(sceneMetadata = {}) {
+function renderEditorView(sceneMetadata = {}) {
   const onUpdateSceneMetadata = vi.fn()
-  render(
+  const view = render(
     <SceneTourEditor
       sceneMetadata={{ 'scene-tour': sceneMetadata }}
       onUpdateSceneMetadata={onUpdateSceneMetadata}
@@ -18,7 +25,11 @@ function renderEditor(sceneMetadata = {}) {
       inputClass="input"
     />,
   )
-  return onUpdateSceneMetadata
+  return { onUpdateSceneMetadata, container: view.container }
+}
+
+function renderEditor(sceneMetadata = {}) {
+  return renderEditorView(sceneMetadata).onUpdateSceneMetadata
 }
 
 describe('currentPages', () => {
@@ -75,7 +86,70 @@ describe('list helpers', () => {
   })
 })
 
+describe('groupAvailable', () => {
+  const registry = {
+    a: { title: 'A', group: 'Value' },
+    b: { title: 'B', group: 'Opening' },
+    c: { title: 'C', group: 'Opening' },
+    d: { title: 'D', group: 'Search' },
+    e: { title: 'E', group: 'Mystery' },
+  }
+  const groups = ['Opening', 'Value', 'Platform', 'Search']
+
+  it('follows the order of groups and omits empty groups', () => {
+    const result = groupAvailable(registry, groups, [])
+    expect(result.map((g) => g.group)).toEqual(['Opening', 'Value', 'Search', 'Other'])
+    expect(result[0].ids).toEqual(['b', 'c'])
+  })
+
+  it('excludes ids that are already used', () => {
+    const result = groupAvailable(registry, groups, ['b', 'a'])
+    expect(result).toEqual([
+      { group: 'Opening', ids: ['c'] },
+      { group: 'Search', ids: ['d'] },
+      { group: 'Other', ids: ['e'] },
+    ])
+  })
+
+  it('puts slides with an unknown group into a trailing Other group', () => {
+    const result = groupAvailable({ x: { title: 'X', group: 'Nope' } }, groups, [])
+    expect(result).toEqual([{ group: 'Other', ids: ['x'] }])
+  })
+
+  it('returns nothing when every slide is used', () => {
+    expect(groupAvailable(registry, groups, Object.keys(registry))).toEqual([])
+  })
+})
+
 describe('SceneTourEditor', () => {
+  it('shows the slide section heading and the Add slide select', () => {
+    renderEditor()
+    expect(screen.getByRole('heading', { name: 'Slides' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Pages' })).toBeNull()
+  })
+
+  it('groups unused slides into optgroups labelled by group', () => {
+    const { container } = renderEditorView({ pages: [{ sceneId: 'about' }] })
+    const optgroups = Array.from(container.querySelectorAll('optgroup'))
+    const unused = Object.keys(TOUR_PAGE_REGISTRY).filter((id) => id !== 'about')
+    const expectedGroups = TOUR_PAGE_GROUPS.filter((g) => unused.some((id) => TOUR_PAGE_REGISTRY[id].group === g))
+    expect(optgroups.map((o) => o.label)).toEqual(expectedGroups)
+    const expectedIds = TOUR_PAGE_GROUPS.flatMap((g) => unused.filter((id) => TOUR_PAGE_REGISTRY[id].group === g))
+    const offered = optgroups.flatMap((o) => Array.from(o.querySelectorAll('option')).map((opt) => opt.value))
+    expect(offered).toEqual(expectedIds)
+  })
+
+  it('appends the chosen slide from an optgroup option', () => {
+    const { container, onUpdateSceneMetadata } = renderEditorView({ pages: [{ sceneId: 'about' }] })
+    const option = container.querySelector('optgroup option[value="search-context"]')
+    expect(option).toBeTruthy()
+    expect(option.textContent).toBe(TOUR_PAGE_REGISTRY['search-context'].title)
+    fireEvent.change(screen.getByLabelText('Add slide'), { target: { value: 'search-context' } })
+    expect(onUpdateSceneMetadata).toHaveBeenCalledWith('scene-tour', {
+      pages: [{ sceneId: 'about' }, { sceneId: 'search-context' }],
+    })
+  })
+
   it('renders a card per default page with registry titles', () => {
     renderEditor()
     expect(screen.getByText('About Elastic')).toBeTruthy()
@@ -126,7 +200,7 @@ describe('SceneTourEditor', () => {
 
   it('adds a page picked from the select after one was removed', () => {
     const onUpdate = renderEditor({ pages: [{ sceneId: 'about' }] })
-    const select = screen.getByLabelText('Add page')
+    const select = screen.getByLabelText('Add slide')
     fireEvent.change(select, { target: { value: 'search-context' } })
     expect(onUpdate.mock.calls[0][1].pages).toEqual([
       { sceneId: 'about' },
