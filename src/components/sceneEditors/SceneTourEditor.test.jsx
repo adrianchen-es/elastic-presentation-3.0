@@ -224,9 +224,27 @@ describe('SceneTourEditor', () => {
     }
   })
 
-  it('reset removes pages but keeps eyebrow', () => {
+  it('reset sends pages as an own undefined key so the merge clears it', () => {
     const onUpdate = renderEditor({ eyebrow: 'Custom', pages: [{ sceneId: 'about' }] })
     fireEvent.click(screen.getByText('Reset to defaults'))
-    expect(onUpdate).toHaveBeenCalledWith('scene-tour', { eyebrow: 'Custom' })
+    expect(onUpdate).toHaveBeenCalledWith('scene-tour', { pages: undefined })
+    const patch = onUpdate.mock.calls[0][1]
+    expect(Object.prototype.hasOwnProperty.call(patch, 'pages')).toBe(true)
+    expect(patch.pages).toBeUndefined()
+    expect(patch).not.toHaveProperty('eyebrow')
+  })
+
+  it('disables Remove on the only enabled page, but not on a disabled page', () => {
+    renderEditor({
+      pages: [
+        { sceneId: 'hero' },
+        { sceneId: 'about', enabled: false },
+        { sceneId: 'problem-patterns', enabled: false },
+      ],
+    })
+    const removeEnabled = screen.getByLabelText(`Remove ${TOUR_PAGE_REGISTRY.hero.title}`)
+    const removeDisabledPage = screen.getByLabelText(`Remove ${TOUR_PAGE_REGISTRY.about.title}`)
+    expect(removeEnabled.disabled).toBe(true)
+    expect(removeDisabledPage.disabled).toBe(false)
   })
 })

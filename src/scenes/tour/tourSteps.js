@@ -21,6 +21,22 @@ export function clampStepHold(ms, { minHold = STEP_MIN_MS, maxHold = STEP_MAX_MS
 }
 
 /**
+ * The beat list a scene will actually run, given its registry beats and the
+ * metadata it will be rendered with. Mirrors the scenes' own merge, so the tour
+ * counts and times the same beats the scene shows:
+ * `(metadata.beats || base).map((b, i) => ({ ...base[i], ...b }))`.
+ *
+ * Returns `undefined` for a page with no registry beats, because such a scene
+ * does not step through beats at all.
+ */
+export function effectiveBeats(baseBeats, pageMetadata) {
+  if (!Array.isArray(baseBeats)) return undefined
+  const custom = pageMetadata?.beats
+  const source = Array.isArray(custom) ? custom : baseBeats
+  return source.map((beat, i) => ({ ...(baseBeats[i] || {}), ...beat }))
+}
+
+/**
  * Flattens the pages into the one-dimensional beat list `useSceneMotion` drives:
  * one entry per (page, step) pair, each carrying its own dwell.
  *

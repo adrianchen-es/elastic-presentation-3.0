@@ -4,7 +4,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useSceneMotion } from '../../hooks/useSceneMotion'
 import { SceneMotionProvider, useSceneMotionControls } from '../../context/SceneMotionContext'
 import { SceneMotionFollow, useSceneMotionFollow } from '../../context/SceneMotionFollowContext'
-import { buildTourSteps, resolvePages } from './tourSteps'
+import { buildTourSteps, effectiveBeats, resolvePages } from './tourSteps'
 
 const MONO = { fontFamily: 'Space Mono, ui-monospace, monospace' }
 // Shared empty metadata so an embedded page with no copy gets a stable identity.
@@ -35,14 +35,22 @@ function TourRunner({ metadata, sceneMetadata, pages, eyebrow: defaultEyebrow })
   const { setControls } = useSceneMotionControls()
   const following = useSceneMotionFollow() != null
 
-  const steps = useMemo(
-    () => buildTourSteps(pages, {
+  // A page's beats come from the metadata it renders with (deck copy, then the
+  // tour's own override), as the scene itself resolves them. Using the registry
+  // list alone would drift from what the scene shows once a copy edits its beats.
+  const pageMetadata = metadata.pageMetadata
+  const steps = useMemo(() => {
+    const withBeats = pages.map((p) => {
+      if (!p.beats) return p
+      const layered = { ...(sceneMetadata?.[p.sceneId] || {}), ...(pageMetadata?.[p.sceneId] || {}) }
+      return { ...p, beats: effectiveBeats(p.beats, layered) }
+    })
+    return buildTourSteps(withBeats, {
       minHold: metadata.minHold,
       maxHold: metadata.maxHold,
       pageHold: metadata.pageHold,
-    }),
-    [pages, metadata.minHold, metadata.maxHold, metadata.pageHold],
-  )
+    })
+  }, [pages, sceneMetadata, pageMetadata, metadata.minHold, metadata.maxHold, metadata.pageHold])
 
   const { beat, playKey, isPlaying, goTo, play, toggleAutoplay } = useSceneMotion(steps, {
     loop: true,
@@ -90,6 +98,18 @@ function TourRunner({ metadata, sceneMetadata, pages, eyebrow: defaultEyebrow })
       : { ...(deckMeta || {}), ...(override || {}) }),
     [deckMeta, override],
   )
+
+  // Remount the page each time the tour moves onto its first step from another
+  // beat, so a loop wrap or a jump back replays the entrance and clears one-shot
+  // reveals. Later steps keep the same key, so they step the live page. Keyed on
+  // the beat, not playKey, so the autostart's playKey bump does not remount.
+  const entryRef = useRef({ beat, count: 0 })
+  if (entryRef.current.beat !== beat) {
+    entryRef.current = {
+      beat,
+      count: entryRef.current.count + (current.stepIndex === 0 ? 1 : 0),
+    }
+  }
 
   const accent = isDark ? '#48EFCF' : '#0B64DD'
   const mutedText = isDark ? 'text-white/50' : 'text-elastic-dev-blue/50'
@@ -145,7 +165,7 @@ function TourRunner({ metadata, sceneMetadata, pages, eyebrow: defaultEyebrow })
       <div className="flex-1 min-h-0">
         <SceneMotionProvider>
           <SceneMotionFollow beat={current.stepIndex} playKey={playKey}>
-            <div key={page.id} className="h-full w-full">
+            <div key={`${page.id}:${entryRef.current.count}`} className="h-full w-full">
               <PageComponent
                 metadata={pageMeta}
                 {...(page.stepProps?.[current.stepIndex] || {})}

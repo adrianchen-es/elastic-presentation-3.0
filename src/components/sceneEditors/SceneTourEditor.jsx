@@ -78,10 +78,9 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
     pages.map((p) => p.sceneId),
   )
 
+  // The parent merges metadata, so deleting a key would not clear it. An undefined value does.
   const resetToDefaults = () => {
-    const rest = { ...meta }
-    delete rest.pages
-    onUpdateSceneMetadata(SCENE_ID, rest)
+    onUpdateSceneMetadata(SCENE_ID, { pages: undefined })
   }
 
   return (
@@ -143,8 +142,9 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
                       type="button"
                       aria-label={`Remove ${label}`}
                       className={buttonClass(isDark)}
-                      // Removing the last page would silently bring the defaults back.
-                      disabled={pages.length === 1}
+                      // Removing the only enabled page would silently bring the defaults back.
+                      // A single page is also blocked, since removing it leaves nothing to show.
+                      disabled={pages.length === 1 || (page.enabled !== false && enabledCount === 1)}
                       onClick={() => update({ pages: removePage(pages, i) })}
                     >
                       Remove

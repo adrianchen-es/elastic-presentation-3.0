@@ -3,6 +3,7 @@ import {
   clampStepHold,
   buildTourSteps,
   resolvePages,
+  effectiveBeats,
   PAGE_HOLD_MS,
   STEP_MIN_MS,
   STEP_MAX_MS,
@@ -242,5 +243,36 @@ describe('resolvePages', () => {
     expect(metadata).toEqual(metadataCopy)
     expect(defaultPages).toEqual(defaultsCopy)
     expect(registry).toEqual(registryCopy)
+  })
+})
+
+describe('effectiveBeats', () => {
+  const base = [{ key: 'one', hold: 6000 }, { key: 'two', hold: 7000 }]
+
+  it('returns undefined for a page without registry beats', () => {
+    expect(effectiveBeats(undefined, { beats: [{ hold: 1 }] })).toBeUndefined()
+  })
+
+  it('returns the registry beats when the metadata has none', () => {
+    expect(effectiveBeats(base, {})).toEqual(base)
+    expect(effectiveBeats(base, undefined)).toEqual(base)
+  })
+
+  it('follows a custom beat count and merges each over its default by index', () => {
+    const result = effectiveBeats(base, { beats: [{ hold: 9000 }] })
+    expect(result).toEqual([{ key: 'one', hold: 9000 }])
+  })
+
+  it('keeps extra custom beats that have no default', () => {
+    const result = effectiveBeats(base, { beats: [{}, {}, { key: 'three', hold: 5500 }] })
+    expect(result).toHaveLength(3)
+    expect(result[2]).toEqual({ key: 'three', hold: 5500 })
+  })
+
+  it('does not mutate its inputs', () => {
+    const meta = { beats: [{ hold: 9000 }] }
+    effectiveBeats(base, meta)
+    expect(base[0].hold).toBe(6000)
+    expect(meta.beats).toEqual([{ hold: 9000 }])
   })
 })

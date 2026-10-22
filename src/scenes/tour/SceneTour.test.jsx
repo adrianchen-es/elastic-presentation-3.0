@@ -199,4 +199,61 @@ describe('SceneTour engine', () => {
     expect(container.textContent).not.toContain('before')
     expect(mounts.count).toBe(1)
   })
+
+  it('steps through the beats the deck copy defines, not the registry list', () => {
+    vi.useFakeTimers()
+    try {
+      const registry = {
+        a: {
+          title: 'Alpha',
+          component: () => <div>alpha-body</div>,
+          beats: [{ key: 'x', hold: 6000 }, { key: 'y', hold: 6000 }],
+        },
+        b: { title: 'Beta', component: () => <div>beta-body</div> },
+      }
+      // The copy trims the scene to a single beat, so the tour must not wait
+      // for a second one before moving on.
+      const { container } = renderTour({
+        registry,
+        defaultPages: [{ sceneId: 'a' }, { sceneId: 'b' }],
+        sceneMetadata: { a: { beats: [{ hold: 6000 }] } },
+      })
+
+      advanceOneStep(6000)
+      expect(container.textContent).toContain('beta-body')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('remounts a page when the loop wraps back to its first step', () => {
+    vi.useFakeTimers()
+    try {
+      const mounts = { count: 0 }
+      const registry = {
+        a: {
+          title: 'Alpha',
+          component: ({ verdictSignal }) => {
+            useEffect(() => { mounts.count += 1 }, [])
+            return <div>{`signal-${verdictSignal}`}</div>
+          },
+          stepProps: [{ verdictSignal: 0 }, { verdictSignal: 1 }],
+          hold: 6000,
+        },
+      }
+      const { container } = renderTour({ registry, defaultPages: [{ sceneId: 'a' }] })
+      expect(container.textContent).toContain('signal-0')
+
+      advanceOneStep(6000)
+      expect(container.textContent).toContain('signal-1')
+      expect(mounts.count).toBe(1)
+
+      // Wrapping the loop on this lone page must reset the reveal.
+      advanceOneStep(6000)
+      expect(container.textContent).toContain('signal-0')
+      expect(mounts.count).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
