@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { TOUR_PAGE_REGISTRY, PLATFORM_TOUR_PAGES } from './tourPageRegistry'
+import { TOUR_PAGE_REGISTRY, DEFAULT_TOUR_PAGES } from './tourPageRegistry'
 
 const EXPECTED_ORDER = [
   'about',
@@ -53,19 +53,19 @@ describe('TOUR_PAGE_REGISTRY', () => {
   })
 })
 
-describe('PLATFORM_TOUR_PAGES', () => {
+describe('DEFAULT_TOUR_PAGES', () => {
   it('is exactly the six scene ids in the default order', () => {
-    expect(PLATFORM_TOUR_PAGES.map((page) => page.sceneId)).toEqual(EXPECTED_ORDER)
+    expect(DEFAULT_TOUR_PAGES.map((page) => page.sceneId)).toEqual(EXPECTED_ORDER)
   })
 
   it('references only ids that exist in TOUR_PAGE_REGISTRY', () => {
-    for (const { sceneId } of PLATFORM_TOUR_PAGES) {
+    for (const { sceneId } of DEFAULT_TOUR_PAGES) {
       expect(TOUR_PAGE_REGISTRY).toHaveProperty([sceneId])
     }
   })
 
   it('has unique scene ids', () => {
-    const ids = PLATFORM_TOUR_PAGES.map((page) => page.sceneId)
+    const ids = DEFAULT_TOUR_PAGES.map((page) => page.sceneId)
     expect(new Set(ids).size).toBe(ids.length)
   })
 })

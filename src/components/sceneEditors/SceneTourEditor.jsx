@@ -1,7 +1,7 @@
 import { EyebrowField, editorCardClass, fieldLabelClass, sectionTitleClass } from './BeatsEditorBlock'
-import { PLATFORM_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
+import { DEFAULT_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
 
-const SCENE_ID = 'platform-tour'
+const SCENE_ID = 'scene-tour'
 
 export function currentPages(meta) {
   const pages = meta?.pages
@@ -9,7 +9,7 @@ export function currentPages(meta) {
   // Legacy format: index-keyed partial overrides on the default list. Show them,
   // so the first edit does not silently discard them.
   const overrides = Array.isArray(pages) ? pages : []
-  return PLATFORM_TOUR_PAGES.map((page, i) => ({ ...page, ...(overrides[i] || {}) }))
+  return DEFAULT_TOUR_PAGES.map((page, i) => ({ ...page, ...(overrides[i] || {}) }))
 }
 
 export function movePage(list, index, direction) {
@@ -46,7 +46,7 @@ const buttonClass = (isDark) =>
       : 'border-elastic-dev-blue/20 text-elastic-dark-ink/70 hover:bg-elastic-dev-blue/5'
   }`
 
-export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadata, isDark, inputClass }) {
+export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, isDark, inputClass }) {
   const meta = sceneMetadata?.[SCENE_ID] || {}
   const update = (patch) => onUpdateSceneMetadata(SCENE_ID, { ...meta, ...patch })
   const pages = currentPages(meta)
@@ -64,7 +64,7 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
       <EyebrowField
         value={meta.eyebrow || ''}
         onChange={(eyebrow) => update({ eyebrow })}
-        placeholder="Elastic · Platform Tour"
+        placeholder="Elastic · Scene Tour"
         inputClass={inputClass}
         isDark={isDark}
       />
@@ -77,8 +77,8 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
             const defaultTitle = entry ? entry.title : page.sceneId
             const label = page.title || defaultTitle
             const hasBeats = Boolean(entry?.beats)
-            const holdId = `platform-tour-hold-${i}`
-            const checkId = `platform-tour-enabled-${i}`
+            const holdId = `scene-tour-hold-${i}`
+            const checkId = `scene-tour-enabled-${i}`
             return (
               <div key={`${page.sceneId}-${i}`} className={editorCardClass(isDark)}>
                 <div className="flex items-center justify-between gap-2 mb-2">
@@ -128,9 +128,9 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor={`platform-tour-title-${i}`} className={fieldLabelClass(isDark)}>Title</label>
+                    <label htmlFor={`scene-tour-title-${i}`} className={fieldLabelClass(isDark)}>Title</label>
                     <input
-                      id={`platform-tour-title-${i}`}
+                      id={`scene-tour-title-${i}`}
                       type="text"
                       value={page.title || ''}
                       onChange={(e) => update({ pages: setPage(pages, i, { title: e.target.value }) })}

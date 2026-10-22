@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent, act } from '@testing-library/react'
-import PlatformTourScene, { buildTourSteps } from './PlatformTourScene'
+import SceneTourScene, { buildTourSteps } from './SceneTourScene'
 import { ThemeProvider } from '../context/ThemeContext'
 import { SceneMotionProvider } from '../context/SceneMotionContext'
 
@@ -9,7 +9,7 @@ function renderTour() {
   return render(
     <ThemeProvider>
       <SceneMotionProvider>
-        <PlatformTourScene />
+        <SceneTourScene />
       </SceneMotionProvider>
     </ThemeProvider>,
   )
@@ -21,7 +21,7 @@ const advanceOneStep = (ms) => act(() => vi.advanceTimersByTime(ms))
 
 afterEach(cleanup)
 
-describe('platform tour scene', () => {
+describe('scene tour scene', () => {
   it('opens on About Elastic and jumps to a page when its pill is clicked', () => {
     const { container, getByText } = renderTour()
     expect(container.textContent).toContain('5B+')

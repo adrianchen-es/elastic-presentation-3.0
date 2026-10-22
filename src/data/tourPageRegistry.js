@@ -55,9 +55,9 @@ export const TOUR_PAGE_REGISTRY = {
 }
 
 /**
- * The default Platform Tour running order, as scene ids from TOUR_PAGE_REGISTRY.
+ * The default Scene Tour running order, as scene ids from TOUR_PAGE_REGISTRY.
  */
-export const PLATFORM_TOUR_PAGES = [
+export const DEFAULT_TOUR_PAGES = [
   'about',
   'unified-strategy',
   'data-explosion',

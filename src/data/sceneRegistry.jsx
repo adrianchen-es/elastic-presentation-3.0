@@ -58,7 +58,7 @@ import GpuVectorPipelineScene from '../scenes/GpuVectorPipelineScene'
 import SearchInferenceScene from '../scenes/SearchInferenceScene'
 import SearchContextScene from '../scenes/SearchContextScene'
 import VideoKnowledgeScene from '../scenes/VideoKnowledgeScene'
-import PlatformTourScene from '../scenes/PlatformTourScene'
+import SceneTourScene from '../scenes/SceneTourScene'
 
 /**
  * Canonical scene registry for the deck. Shared by the main presentation
@@ -75,11 +75,11 @@ export const SCENE_REGISTRY = [
     description: ''
   },
   {
-    id: 'platform-tour',
-    component: PlatformTourScene,
-    title: 'Platform Tour',
+    id: 'scene-tour',
+    component: SceneTourScene,
+    title: 'Scene Tour',
     duration: '2 min',
-    description: 'Self-running loop for a booth or a room filling up. Configurable: pick, order, rename and time the pages in the Deck Builder. By default six pages (About, Platform Overview, Data Explosion, Unstructured Challenge, Context Layer, Knowledge From Video) rotate on their own',
+    description: 'Self-running loop for a booth or a room filling up. Configurable: pick, order, rename and time the slides in the Deck Builder. By default six slides (About, Platform Overview, Data Explosion, Unstructured Challenge, Context Layer, Knowledge From Video) rotate on their own',
   },
   {
     id: 'agenda',

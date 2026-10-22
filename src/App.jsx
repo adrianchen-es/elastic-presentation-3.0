@@ -126,7 +126,7 @@ function AppContent() {
     sceneProps = { metadata: currentMeta }
   } else if (currentBaseId === 'about') {
     sceneProps = { metadata: currentMeta }
-  } else if (currentBaseId === 'platform-tour') {
+  } else if (currentBaseId === 'scene-tour') {
     sceneProps = { metadata: currentMeta }
   } else if (currentBaseId === 'business-value') {
     sceneProps = {

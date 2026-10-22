@@ -1,4 +1,4 @@
-// Pure helpers for the platform tour. No React here, so they can be tested
+// Pure helpers for the scene tour. No React here, so they can be tested
 // and reused without rendering anything.
 
 // A page that shows one static view dwells this long before the tour moves on.

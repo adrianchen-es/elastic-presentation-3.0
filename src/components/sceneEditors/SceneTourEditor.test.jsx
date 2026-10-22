@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, fireEvent, cleanup, screen } from '@testing-library/react'
-import PlatformTourEditor, { currentPages, movePage, setPage, removePage, addPage } from './PlatformTourEditor'
-import { PLATFORM_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
+import SceneTourEditor, { currentPages, movePage, setPage, removePage, addPage } from './SceneTourEditor'
+import { DEFAULT_TOUR_PAGES, TOUR_PAGE_REGISTRY } from '../../data/tourPageRegistry'
 
 afterEach(() => {
   cleanup()
@@ -11,8 +11,8 @@ afterEach(() => {
 function renderEditor(sceneMetadata = {}) {
   const onUpdateSceneMetadata = vi.fn()
   render(
-    <PlatformTourEditor
-      sceneMetadata={{ 'platform-tour': sceneMetadata }}
+    <SceneTourEditor
+      sceneMetadata={{ 'scene-tour': sceneMetadata }}
       onUpdateSceneMetadata={onUpdateSceneMetadata}
       isDark={false}
       inputClass="input"
@@ -23,7 +23,7 @@ function renderEditor(sceneMetadata = {}) {
 
 describe('currentPages', () => {
   it('returns the default list when no pages are configured', () => {
-    expect(currentPages({})).toEqual(PLATFORM_TOUR_PAGES)
+    expect(currentPages({})).toEqual(DEFAULT_TOUR_PAGES)
   })
 
   it('returns configured pages when at least one has a sceneId', () => {
@@ -33,10 +33,10 @@ describe('currentPages', () => {
 
   it('shows legacy index-only overrides merged onto the defaults', () => {
     const pages = currentPages({ pages: [{ enabled: false }, { hold: 5000 }] })
-    expect(pages).toHaveLength(PLATFORM_TOUR_PAGES.length)
-    expect(pages[0]).toEqual({ ...PLATFORM_TOUR_PAGES[0], enabled: false })
-    expect(pages[1]).toEqual({ ...PLATFORM_TOUR_PAGES[1], hold: 5000 })
-    expect(pages[2]).toEqual(PLATFORM_TOUR_PAGES[2])
+    expect(pages).toHaveLength(DEFAULT_TOUR_PAGES.length)
+    expect(pages[0]).toEqual({ ...DEFAULT_TOUR_PAGES[0], enabled: false })
+    expect(pages[1]).toEqual({ ...DEFAULT_TOUR_PAGES[1], hold: 5000 })
+    expect(pages[2]).toEqual(DEFAULT_TOUR_PAGES[2])
   })
 })
 
@@ -75,12 +75,12 @@ describe('list helpers', () => {
   })
 })
 
-describe('PlatformTourEditor', () => {
+describe('SceneTourEditor', () => {
   it('renders a card per default page with registry titles', () => {
     renderEditor()
     expect(screen.getByText('About Elastic')).toBeTruthy()
     expect(screen.getByText('Platform Overview')).toBeTruthy()
-    expect(screen.getAllByRole('checkbox')).toHaveLength(PLATFORM_TOUR_PAGES.length)
+    expect(screen.getAllByRole('checkbox')).toHaveLength(DEFAULT_TOUR_PAGES.length)
   })
 
   it('moves the first page down and swaps the first two sceneIds', () => {
@@ -88,7 +88,7 @@ describe('PlatformTourEditor', () => {
     fireEvent.click(screen.getByLabelText('Move down About Elastic'))
     expect(onUpdate).toHaveBeenCalledTimes(1)
     const [id, patch] = onUpdate.mock.calls[0]
-    expect(id).toBe('platform-tour')
+    expect(id).toBe('scene-tour')
     expect(patch.pages[0].sceneId).toBe('unified-strategy')
     expect(patch.pages[1].sceneId).toBe('about')
   })
@@ -118,7 +118,7 @@ describe('PlatformTourEditor', () => {
 
   it('disables the hold input for a page with beats', () => {
     renderEditor()
-    const searchChallengeIndex = PLATFORM_TOUR_PAGES.findIndex((p) => p.sceneId === 'search-challenge')
+    const searchChallengeIndex = DEFAULT_TOUR_PAGES.findIndex((p) => p.sceneId === 'search-challenge')
     const holdInput = screen.getAllByLabelText('Hold (seconds)')[searchChallengeIndex]
     expect(holdInput.disabled).toBe(true)
     expect(screen.getAllByText("Timing follows the scene's own beats").length).toBeGreaterThan(0)
@@ -150,6 +150,6 @@ describe('PlatformTourEditor', () => {
   it('reset removes pages but keeps eyebrow', () => {
     const onUpdate = renderEditor({ eyebrow: 'Custom', pages: [{ sceneId: 'about' }] })
     fireEvent.click(screen.getByText('Reset to defaults'))
-    expect(onUpdate).toHaveBeenCalledWith('platform-tour', { eyebrow: 'Custom' })
+    expect(onUpdate).toHaveBeenCalledWith('scene-tour', { eyebrow: 'Custom' })
   })
 })

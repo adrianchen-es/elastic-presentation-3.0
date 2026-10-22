@@ -116,7 +116,7 @@ applied (the New Prospect preset governs the actual default flow).
 | Agenda | `agenda` | Auto-generated agenda from enabled scenes, adaptive grid layout |
 | Team Introductions | `team` | The people in the room, pulled from Team Settings |
 | About Elastic | `about` | Who we are and what we do — company stats |
-| Platform Tour | `platform-tour` | Self-running loop through the key pages. Configurable; see the Scene Tour section |
+| Scene Tour | `scene-tour` | Self-running loop through the key pages. Configurable; see the Scene Tour section |
 | Desired Outcomes | `business-value` | Key areas where Elastic delivers value |
 | Metrics Dashboard | `elastic-value` | Configurable layout — hero stat cards, stat grid, bottom-line banner |
 | Card Grid | `value-by-team` | Configurable layout — icon cards with an impact banner |
@@ -193,7 +193,7 @@ applied (the New Prospect preset governs the actual default flow).
 
 ## Scene Tour (Reusable Self-Running Slide)
 
-The Platform Tour is a self-running slide. It rotates through embedded scenes
+The Scene Tour is a self-running slide. It rotates through embedded scenes
 on its own and loops forever. Each page is a normal scene from the registry.
 
 The engine is generic and has four parts:
@@ -202,13 +202,13 @@ The engine is generic and has four parts:
   toggle in the nav bar, and jump-to-page by clicking a pill.
 - `src/scenes/tour/tourSteps.js`: pure helpers (`buildTourSteps`,
   `clampStepHold`, `resolvePages`).
-- `src/data/tourPageRegistry.js`: `TOUR_PAGE_REGISTRY` and `PLATFORM_TOUR_PAGES`.
-- `src/scenes/PlatformTourScene.jsx`: passes the registry, default pages and
+- `src/data/tourPageRegistry.js`: `TOUR_PAGE_REGISTRY` and `DEFAULT_TOUR_PAGES`.
+- `src/scenes/SceneTourScene.jsx`: passes the registry, default pages and
   eyebrow to `SceneTour`.
 
 ### Metadata
 
-Stored under the scene id `platform-tour`. Timings are in milliseconds.
+Stored under the scene id `scene-tour`. Timings are in milliseconds.
 
 | Key | Purpose |
 |---|---|
@@ -238,7 +238,7 @@ Rules for `pages`:
 ### Editing it
 
 Select the tour in the Deck Builder and use its inspector. The editor
-(`PlatformTourEditor`) can set the eyebrow, turn pages on or off, reorder them,
+(`SceneTourEditor`) can set the eyebrow, turn pages on or off, reorder them,
 rename them, set a hold in seconds, add pages, and reset to defaults. The hold
 field is disabled for pages with beats, because the beats set their timing.
 The editor does not expose `minHold`, `maxHold` or `pageHold`.
@@ -269,15 +269,15 @@ export default function MyTourScene({ metadata = {} }) {
 ```
 
 3. Register it in `src/data/sceneRegistry.jsx` with an `id`, `component`,
-   `title`, `duration` and `description`, the same way `platform-tour` is set up.
+   `title`, `duration` and `description`, the same way `scene-tour` is set up.
 4. In `src/App.jsx`, add a branch to the `sceneProps` chain, like the
-   `platform-tour` branch: `else if (currentBaseId === 'my-tour') { sceneProps = { metadata: currentMeta } }`.
+   `scene-tour` branch: `else if (currentBaseId === 'my-tour') { sceneProps = { metadata: currentMeta } }`.
 5. Register an editor in `src/components/sceneEditors/index.js` under
    `MODULAR_SCENE_EDITORS`.
 
-Caveat: `PlatformTourEditor` is not generic. It reads `PLATFORM_TOUR_PAGES` and
-`TOUR_PAGE_REGISTRY` directly, and it is hard-coded to the `platform-tour` id and
-`platform-tour-*` element ids. A second tour needs its own copy of the editor
+Caveat: `SceneTourEditor` is not generic. It reads `DEFAULT_TOUR_PAGES` and
+`TOUR_PAGE_REGISTRY` directly, and it is hard-coded to the `scene-tour` id and
+`scene-tour-*` element ids. A second tour needs its own copy of the editor
 with those values changed, or the editor must be generalised to take the
 registry, default pages and scene id as props.
 
