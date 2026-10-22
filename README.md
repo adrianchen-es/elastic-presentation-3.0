@@ -116,7 +116,7 @@ applied (the New Prospect preset governs the actual default flow).
 | Agenda | `agenda` | Auto-generated agenda from enabled scenes, adaptive grid layout |
 | Team Introductions | `team` | The people in the room, pulled from Team Settings |
 | About Elastic | `about` | Who we are and what we do — company stats |
-| Scene Tour | `scene-tour` | Self-running loop through the key pages. Configurable; see the Scene Tour section |
+| Scene Tour | `scene-tour` | Self-running loop of slides you choose. See the Scene Tour section |
 | Desired Outcomes | `business-value` | Key areas where Elastic delivers value |
 | Metrics Dashboard | `elastic-value` | Configurable layout — hero stat cards, stat grid, bottom-line banner |
 | Card Grid | `value-by-team` | Configurable layout — icon cards with an impact banner |
@@ -193,18 +193,49 @@ applied (the New Prospect preset governs the actual default flow).
 
 ## Scene Tour (Reusable Self-Running Slide)
 
-The Scene Tour is a self-running slide. It rotates through embedded scenes
-on its own and loops forever. Each page is a normal scene from the registry.
+The Scene Tour is a self-running slide. It shows a loop of embedded slides, one
+after another, and repeats forever. Each page is a normal slide from the tour
+registry.
 
-The engine is generic and has four parts:
+The engine has four parts:
 
 - `src/scenes/tour/SceneTour.jsx`: autoplay loop, page rail of pills, pause
   toggle in the nav bar, and jump-to-page by clicking a pill.
 - `src/scenes/tour/tourSteps.js`: pure helpers (`buildTourSteps`,
   `clampStepHold`, `resolvePages`).
 - `src/data/tourPageRegistry.js`: `TOUR_PAGE_REGISTRY` and `DEFAULT_TOUR_PAGES`.
-- `src/scenes/SceneTourScene.jsx`: passes the registry, default pages and
-  eyebrow to `SceneTour`.
+- `src/scenes/SceneTourScene.jsx`: passes the registry, default pages, eyebrow
+  and `sceneMetadata` to `SceneTour`.
+
+### Renamed from Platform Tour
+
+The slide was called Platform Tour (`platform-tour`) before. Old decks, deck
+files, cross-tab sync and deep links (`/#/platform-tour`) still work.
+`src/utils/sceneIdAliases.js` maps old ids to current ones when the saved
+config loads. When you rename a scene, add an alias. Never remove one.
+
+### Which slides can be added
+
+A slide can join the tour only if it works with a `metadata` prop alone. Slides
+that need state lifted into `src/App.jsx` stay out. These are: business-value,
+data-mesh, security, schema, esql, services, elastic-overview, data-tiering,
+agenda and team.
+
+Not included yet: search-catalog (App.jsx injects a default `scenarioId`),
+enterprise-deployment (its controls live in the App.jsx nav bar), logsdb and
+cross-cluster (not reviewed yet).
+
+### Adding a slide to the tour
+
+1. Add an entry to `TOUR_PAGE_REGISTRY` in `src/data/tourPageRegistry.js`. Each
+   entry has `title`, `group` and `component`, and optionally `beats`,
+   `stepProps` and `hold`. Groups are listed in `TOUR_PAGE_GROUPS`: Opening,
+   Value, Platform, Search, Security and Observability.
+2. If the slide steps through its own beats with `useSceneMotion`, export its
+   `BEATS` array from the scene file and set `beats` on the entry.
+3. Run `src/data/tourPageRegistry.mount.test.jsx`. It checks that every entry
+   mounts with only `metadata`, and that `beats.length` equals the slide's live
+   beat count. A mismatch fails the test.
 
 ### Metadata
 
@@ -216,15 +247,18 @@ Stored under the scene id `scene-tour`. Timings are in milliseconds.
 | `pages` | Ordered list of `{ sceneId, enabled?, title?, hold? }` |
 | `minHold`, `maxHold` | Clamp for each beat's hold. Defaults 5000 and 10000 |
 | `pageHold` | Hold for a page with no beats. Default 12000 |
-| `pageMetadata` | `{ [sceneId]: {...} }`, passed as `metadata` to that embedded scene |
+| `pageMetadata` | `{ [sceneId]: {...} }`, an override layered on top of that slide's saved copy. Metadata only, no editor |
+
+Embedded slides show the deck's saved copy (`sceneMetadata[sceneId]`), so
+editing a slide on the slide updates the tour.
 
 Rules for `pages`:
 
 - If any entry has a string `sceneId`, that list is used in order. Unknown
   ids are ignored and disabled pages are skipped.
 - If nothing is left, the default list is used.
-- Duplicate ids are allowed. Later copies get ids like `about-2`, but they
-  share `pageMetadata['about']`.
+- Duplicate ids are allowed in `pages`. Slides are looked up by their plain
+  scene id, so a duplicate such as `about~2` in the deck does not feed the tour.
 - Without any `sceneId` entries, the list is legacy: each entry partially
   overrides the default page at the same index.
 
@@ -238,14 +272,24 @@ Rules for `pages`:
 ### Editing it
 
 Select the tour in the Deck Builder and use its inspector. The editor
-(`SceneTourEditor`) can set the eyebrow, turn pages on or off, reorder them,
-rename them, set a hold in seconds, add pages, and reset to defaults. The hold
-field is disabled for pages with beats, because the beats set their timing.
-The editor does not expose `minHold`, `maxHold` or `pageHold`.
+(`SceneTourEditor`) only selects slides. You can turn slides on or off, reorder
+them, remove them, add one from a dropdown grouped by group, give it a custom
+title, and set a hold in seconds. The hold field is disabled for slides with
+beats, because the beats set their timing. The editor does not expose
+`minHold`, `maxHold` or `pageHold`.
+
+The editor does not edit slide content. To change what a slide says, edit it on
+the slide itself. The tour picks up the change.
+
+### Second tour
+
+Duplicate the Scene Tour slide in the Deck Builder. The copy keeps its own slide
+list and eyebrow. Use this when you want a second tour with different slides.
 
 ### Build another tour
 
-1. Add scene entries to `TOUR_PAGE_REGISTRY`, or make a separate registry object.
+1. Add scene entries to `TOUR_PAGE_REGISTRY`, or make a separate registry
+   object.
 2. Create `src/scenes/MyTourScene.jsx`:
 
 ```jsx
@@ -256,13 +300,14 @@ import { TOUR_PAGE_REGISTRY } from '../data/tourPageRegistry'
 // autoplay timer each time the deck re-renders.
 const MY_TOUR_PAGES = [{ sceneId: 'about' }, { sceneId: 'data-explosion' }]
 
-export default function MyTourScene({ metadata = {} }) {
+export default function MyTourScene({ metadata = {}, sceneMetadata = {} }) {
   return (
     <SceneTour
       metadata={metadata}
       registry={TOUR_PAGE_REGISTRY}
       defaultPages={MY_TOUR_PAGES}
       eyebrow="Elastic · My Tour"
+      sceneMetadata={sceneMetadata}
     />
   )
 }
@@ -271,17 +316,16 @@ export default function MyTourScene({ metadata = {} }) {
 3. Register it in `src/data/sceneRegistry.jsx` with an `id`, `component`,
    `title`, `duration` and `description`, the same way `scene-tour` is set up.
 4. In `src/App.jsx`, add a branch to the `sceneProps` chain, like the
-   `scene-tour` branch: `else if (currentBaseId === 'my-tour') { sceneProps = { metadata: currentMeta } }`.
-5. Register an editor in `src/components/sceneEditors/index.js` under
+   `scene-tour` branch. It must pass `sceneMetadata` as well as `metadata`.
+5. In `src/presenter/buildPreviewProps.js`, add a case next to the
+   `'scene-tour'` case. It must also pass `sceneMetadata`.
+6. Register an editor in `src/components/sceneEditors/index.js` under
    `MODULAR_SCENE_EDITORS`.
 
 Caveat: `SceneTourEditor` is not generic. It reads `DEFAULT_TOUR_PAGES` and
-`TOUR_PAGE_REGISTRY` directly, and it is hard-coded to the `scene-tour` id and
-`scene-tour-*` element ids. A second tour needs its own copy of the editor
-with those values changed, or the editor must be generalised to take the
-registry, default pages and scene id as props.
-
----
+`TOUR_PAGE_REGISTRY` directly and is hard-coded to the `scene-tour` id. A new
+tour needs its own editor copy, or a generalised editor. Duplicating the slide
+is easier.
 
 ## Presenter View
 
