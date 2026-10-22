@@ -80,12 +80,14 @@ export const TOUR_PAGE_REGISTRY = {
     group: 'Value',
   },
   'elastic-value': {
-    title: 'Metrics Dashboard',
+    // Ships with placeholder copy: fill it in on the slide first.
+    title: 'Metrics Dashboard (template)',
     component: ElasticValueScene,
     group: 'Value',
   },
   'value-by-team': {
-    title: 'Value by Team',
+    // Ships with placeholder copy: fill it in on the slide first.
+    title: 'Value by Team (template)',
     component: ValueByTeamScene,
     group: 'Value',
   },
@@ -182,7 +184,8 @@ export const TOUR_PAGE_REGISTRY = {
     beats: SEARCH_INFERENCE_BEATS,
   },
   'security-use-cases': {
-    title: 'Security Use Cases',
+    // Ships with placeholder copy: fill it in on the slide first.
+    title: 'Security Use Cases (template)',
     component: SecurityUseCasesScene,
     group: 'Security',
   },

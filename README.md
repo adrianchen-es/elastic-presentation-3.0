@@ -221,6 +221,10 @@ that need state lifted into `src/App.jsx` stay out. These are: business-value,
 data-mesh, security, schema, esql, services, elastic-overview, data-tiering,
 agenda and team.
 
+Three slides are templates that ship with placeholder copy (Metrics Dashboard,
+Value by Team and Security Use Cases). Their titles end in "(template)". Fill
+in their copy on the slide first, then add them to the tour.
+
 Not included yet: search-catalog (App.jsx injects a default `scenarioId`),
 enterprise-deployment (its controls live in the App.jsx nav bar), logsdb and
 cross-cluster (not reviewed yet).
@@ -326,6 +330,8 @@ Caveat: `SceneTourEditor` is not generic. It reads `DEFAULT_TOUR_PAGES` and
 `TOUR_PAGE_REGISTRY` directly and is hard-coded to the `scene-tour` id. A new
 tour needs its own editor copy, or a generalised editor. Duplicating the slide
 is easier.
+
+---
 
 ## Presenter View
 
