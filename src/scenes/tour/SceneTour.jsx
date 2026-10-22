@@ -7,6 +7,8 @@ import { SceneMotionFollow, useSceneMotionFollow } from '../../context/SceneMoti
 import { buildTourSteps, resolvePages } from './tourSteps'
 
 const MONO = { fontFamily: 'Space Mono, ui-monospace, monospace' }
+// Shared empty metadata so an embedded page with no copy gets a stable identity.
+const NO_METADATA = {}
 
 /**
  * A generic, configurable tour. The caller supplies a scene registry and the
@@ -16,7 +18,7 @@ const MONO = { fontFamily: 'Space Mono, ui-monospace, monospace' }
  * Pages are resolved first. With no pages to show, nothing renders, so the
  * runner below never mounts and its hooks never see zero steps.
  */
-export default function SceneTour({ metadata = {}, registry, defaultPages, eyebrow = 'Tour' }) {
+export default function SceneTour({ metadata = {}, sceneMetadata, registry, defaultPages, eyebrow = 'Tour' }) {
   const pages = useMemo(
     () => resolvePages({ pages: metadata.pages }, registry, defaultPages),
     [metadata.pages, registry, defaultPages],
@@ -24,10 +26,10 @@ export default function SceneTour({ metadata = {}, registry, defaultPages, eyebr
 
   if (pages.length === 0) return null
 
-  return <TourRunner metadata={metadata} pages={pages} eyebrow={eyebrow} />
+  return <TourRunner metadata={metadata} sceneMetadata={sceneMetadata} pages={pages} eyebrow={eyebrow} />
 }
 
-function TourRunner({ metadata, pages, eyebrow: defaultEyebrow }) {
+function TourRunner({ metadata, sceneMetadata, pages, eyebrow: defaultEyebrow }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const { setControls } = useSceneMotionControls()
@@ -77,6 +79,17 @@ function TourRunner({ metadata, pages, eyebrow: defaultEyebrow }) {
   const current = steps[beat] || steps[0]
   const page = pages[current.pageIndex]
   const PageComponent = page.component
+  // Layering: the deck's saved copy for this slide comes first, and the tour's
+  // own pageMetadata for it sits on top as an override. Memoised so a page sees
+  // the same object across renders that change nothing relevant.
+  const deckMeta = sceneMetadata?.[page.sceneId]
+  const override = metadata.pageMetadata?.[page.sceneId]
+  const pageMeta = useMemo(
+    () => (deckMeta === undefined && override === undefined
+      ? NO_METADATA
+      : { ...(deckMeta || {}), ...(override || {}) }),
+    [deckMeta, override],
+  )
 
   const accent = isDark ? '#48EFCF' : '#0B64DD'
   const mutedText = isDark ? 'text-white/50' : 'text-elastic-dev-blue/50'
@@ -134,7 +147,7 @@ function TourRunner({ metadata, pages, eyebrow: defaultEyebrow }) {
           <SceneMotionFollow beat={current.stepIndex} playKey={playKey}>
             <div key={page.id} className="h-full w-full">
               <PageComponent
-                metadata={metadata.pageMetadata?.[page.sceneId] || {}}
+                metadata={pageMeta}
                 {...(page.stepProps?.[current.stepIndex] || {})}
               />
             </div>

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useEffect } from 'react'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent, act } from '@testing-library/react'
 import SceneTour from './SceneTour'
@@ -107,5 +108,95 @@ describe('SceneTour engine', () => {
     })
 
     expect(container.textContent).toContain('hello-meta')
+  })
+
+  it('shows the deck copy for an embedded slide', () => {
+    const registry = {
+      a: { title: 'Alpha', component: ({ metadata }) => <div>{metadata.label}</div> },
+    }
+    const { container } = renderTour({
+      registry,
+      defaultPages: [{ sceneId: 'a' }],
+      sceneMetadata: { a: { label: 'from-deck' } },
+    })
+
+    expect(container.textContent).toContain('from-deck')
+  })
+
+  it('layers the tour pageMetadata override over the deck copy', () => {
+    const registry = {
+      a: {
+        title: 'Alpha',
+        component: ({ metadata }) => <div>{`${metadata.label}|${metadata.extra}`}</div>,
+      },
+    }
+    const { container } = renderTour({
+      registry,
+      defaultPages: [{ sceneId: 'a' }],
+      sceneMetadata: { a: { label: 'from-deck', extra: 'x' } },
+      metadata: { pageMetadata: { a: { label: 'override' } } },
+    })
+
+    expect(container.textContent).toContain('override|x')
+  })
+
+  it('hands the page the same metadata object across an unrelated re-render', () => {
+    const seen = []
+    const registry = {
+      a: {
+        title: 'Alpha',
+        component: ({ metadata }) => {
+          seen.push(metadata)
+          return <div>alpha-body</div>
+        },
+      },
+    }
+    const sceneMetadata = { a: { label: 'from-deck' } }
+    const tree = (metadata) => (
+      <ThemeProvider>
+        <SceneMotionProvider>
+          <SceneTour
+            registry={registry}
+            defaultPages={[{ sceneId: 'a' }]}
+            metadata={metadata}
+            sceneMetadata={sceneMetadata}
+          />
+        </SceneMotionProvider>
+      </ThemeProvider>
+    )
+
+    const { rerender } = render(tree({}))
+    rerender(tree({}))
+
+    expect(seen.length).toBeGreaterThan(1)
+    expect(seen.every((m) => m === seen[0])).toBe(true)
+  })
+
+  it('updates the shown copy when the deck copy changes, without remounting', () => {
+    const mounts = { count: 0 }
+    const registry = {
+      a: {
+        title: 'Alpha',
+        component: ({ metadata }) => {
+          useEffect(() => { mounts.count += 1 }, [])
+          return <div>{metadata.label}</div>
+        },
+      },
+    }
+    const tree = (sceneMetadata) => (
+      <ThemeProvider>
+        <SceneMotionProvider>
+          <SceneTour registry={registry} defaultPages={[{ sceneId: 'a' }]} sceneMetadata={sceneMetadata} />
+        </SceneMotionProvider>
+      </ThemeProvider>
+    )
+
+    const { container, rerender } = render(tree({ a: { label: 'before' } }))
+    expect(container.textContent).toContain('before')
+
+    rerender(tree({ a: { label: 'after' } }))
+    expect(container.textContent).toContain('after')
+    expect(container.textContent).not.toContain('before')
+    expect(mounts.count).toBe(1)
   })
 })
