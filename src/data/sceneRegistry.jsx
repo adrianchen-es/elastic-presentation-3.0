@@ -79,7 +79,7 @@ export const SCENE_REGISTRY = [
     component: PlatformTourScene,
     title: 'Platform Tour',
     duration: '2 min',
-    description: 'Self-running loop for a booth or a room filling up. Six pages (About, Platform Overview, Data Explosion, Unstructured Challenge, Context Layer, Knowledge From Video) rotate on their own, stepping through each page\u2019s own beats',
+    description: 'Self-running loop for a booth or a room filling up. Configurable: pick, order, rename and time the pages in the Deck Builder. By default six pages (About, Platform Overview, Data Explosion, Unstructured Challenge, Context Layer, Knowledge From Video) rotate on their own',
   },
   {
     id: 'agenda',

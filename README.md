@@ -23,6 +23,7 @@ polished animated scenes — all running locally in the browser with no backend.
 - [Core Concepts](#core-concepts)
 - [Out-of-the-Box Flows (Deck Presets)](#out-of-the-box-flows-deck-presets)
 - [Scene Library](#scene-library)
+- [Scene Tour (Reusable Self-Running Slide)](#scene-tour-reusable-self-running-slide)
 - [Presenter View](#presenter-view)
 - [Architecture Whiteboard](#architecture-whiteboard)
 - [Customization (Settings Panel)](#customization-settings-panel)
@@ -115,6 +116,7 @@ applied (the New Prospect preset governs the actual default flow).
 | Agenda | `agenda` | Auto-generated agenda from enabled scenes, adaptive grid layout |
 | Team Introductions | `team` | The people in the room, pulled from Team Settings |
 | About Elastic | `about` | Who we are and what we do — company stats |
+| Platform Tour | `platform-tour` | Self-running loop through the key pages. Configurable; see the Scene Tour section |
 | Desired Outcomes | `business-value` | Key areas where Elastic delivers value |
 | Metrics Dashboard | `elastic-value` | Configurable layout — hero stat cards, stat grid, bottom-line banner |
 | Card Grid | `value-by-team` | Configurable layout — icon cards with an impact banner |
@@ -186,6 +188,94 @@ applied (the New Prospect preset governs the actual default flow).
 | Elastic Overview | `elastic-overview` | The visualization, data, and ETL planes with optional management plane |
 | Enterprise Deployment | `enterprise-deployment` | Full reference architecture — sources, ingest, tiered cluster, consumers, monitoring |
 | Architecture Whiteboard | `whiteboard` | Live drag-and-drop canvas for whiteboarding, sizing, and presenting Elastic architectures ([full docs](src/components/whiteboard/README.md)) |
+
+---
+
+## Scene Tour (Reusable Self-Running Slide)
+
+The Platform Tour is a self-running slide. It rotates through embedded scenes
+on its own and loops forever. Each page is a normal scene from the registry.
+
+The engine is generic and has four parts:
+
+- `src/scenes/tour/SceneTour.jsx`: autoplay loop, page rail of pills, pause
+  toggle in the nav bar, and jump-to-page by clicking a pill.
+- `src/scenes/tour/tourSteps.js`: pure helpers (`buildTourSteps`,
+  `clampStepHold`, `resolvePages`).
+- `src/data/tourPageRegistry.js`: `TOUR_PAGE_REGISTRY` and `PLATFORM_TOUR_PAGES`.
+- `src/scenes/PlatformTourScene.jsx`: passes the registry, default pages and
+  eyebrow to `SceneTour`.
+
+### Metadata
+
+Stored under the scene id `platform-tour`. Timings are in milliseconds.
+
+| Key | Purpose |
+|---|---|
+| `eyebrow` | Small label before the page rail |
+| `pages` | Ordered list of `{ sceneId, enabled?, title?, hold? }` |
+| `minHold`, `maxHold` | Clamp for each beat's hold. Defaults 5000 and 10000 |
+| `pageHold` | Hold for a page with no beats. Default 12000 |
+| `pageMetadata` | `{ [sceneId]: {...} }`, passed as `metadata` to that embedded scene |
+
+Rules for `pages`:
+
+- If any entry has a string `sceneId`, that list is used in order. Unknown
+  ids are ignored and disabled pages are skipped.
+- If nothing is left, the default list is used.
+- Duplicate ids are allowed. Later copies get ids like `about-2`, but they
+  share `pageMetadata['about']`.
+- Without any `sceneId` entries, the list is legacy: each entry partially
+  overrides the default page at the same index.
+
+### Timing
+
+- A page whose registry entry has `beats` steps through each beat. Each beat
+  uses its own `hold`, clamped to `[minHold, maxHold]`.
+- A page with `stepProps`, or with neither `beats` nor `stepProps`, uses its
+  `hold` (default `pageHold`) for each step. These holds are not clamped.
+
+### Editing it
+
+Select the tour in the Deck Builder and use its inspector. The editor
+(`PlatformTourEditor`) can set the eyebrow, turn pages on or off, reorder them,
+rename them, set a hold in seconds, add pages, and reset to defaults. The hold
+field is disabled for pages with beats, because the beats set their timing.
+The editor does not expose `minHold`, `maxHold` or `pageHold`.
+
+### Build another tour
+
+1. Add scene entries to `TOUR_PAGE_REGISTRY`, or make a separate registry object.
+2. Create `src/scenes/MyTourScene.jsx`:
+
+```jsx
+import SceneTour from './tour/SceneTour'
+import { TOUR_PAGE_REGISTRY } from '../data/tourPageRegistry'
+
+export default function MyTourScene({ metadata = {} }) {
+  return (
+    <SceneTour
+      metadata={metadata}
+      registry={TOUR_PAGE_REGISTRY}
+      defaultPages={[{ sceneId: 'about' }, { sceneId: 'data-explosion' }]}
+      eyebrow="Elastic · My Tour"
+    />
+  )
+}
+```
+
+3. Register it in `src/data/sceneRegistry.jsx` with an `id`, `component`,
+   `title`, `duration` and `description`, the same way `platform-tour` is set up.
+4. In `src/App.jsx`, add a branch to the `sceneProps` chain, like the
+   `platform-tour` branch: `else if (currentBaseId === 'my-tour') { sceneProps = { metadata: currentMeta } }`.
+5. Register an editor in `src/components/sceneEditors/index.js` under
+   `MODULAR_SCENE_EDITORS`.
+
+Caveat: `PlatformTourEditor` is not generic. It reads `PLATFORM_TOUR_PAGES` and
+`TOUR_PAGE_REGISTRY` directly, and it is hard-coded to the `platform-tour` id and
+`platform-tour-*` element ids. A second tour needs its own copy of the editor
+with those values changed, or the editor must be generalised to take the
+registry, default pages and scene id as props.
 
 ---
 
