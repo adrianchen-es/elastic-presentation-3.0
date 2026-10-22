@@ -170,6 +170,13 @@ describe('resolvePages', () => {
     expect(page.hold).toBe(9000)
   })
 
+  it('keeps the registry hold when the override hold is zero or negative', () => {
+    for (const hold of [0, -3000]) {
+      const [page] = resolvePages({ pages: [{ sceneId: 'c', hold }] }, registry, defaults)
+      expect(page.hold).toBe(9000)
+    }
+  })
+
   it('drops unknown sceneIds', () => {
     const pages = resolvePages(
       { pages: [{ sceneId: 'nope' }, { sceneId: 'a' }] },

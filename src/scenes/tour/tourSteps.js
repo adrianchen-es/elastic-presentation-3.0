@@ -66,7 +66,9 @@ function resolveEntries(entries, registry) {
       id,
       sceneId,
       title: entry.title || registryEntry.title,
-      hold: Number.isFinite(entry.hold) ? entry.hold : registryEntry.hold,
+      // A zero or negative hold is meaningless (the motion hook treats 0 as "use
+      // the default"), so only a positive number overrides the registry.
+      hold: Number.isFinite(entry.hold) && entry.hold > 0 ? entry.hold : registryEntry.hold,
     })
   }
 

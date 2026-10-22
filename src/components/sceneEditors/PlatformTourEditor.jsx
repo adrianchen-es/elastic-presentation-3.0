@@ -6,7 +6,10 @@ const SCENE_ID = 'platform-tour'
 export function currentPages(meta) {
   const pages = meta?.pages
   if (Array.isArray(pages) && pages.some((p) => typeof p?.sceneId === 'string')) return pages
-  return PLATFORM_TOUR_PAGES
+  // Legacy format: index-keyed partial overrides on the default list. Show them,
+  // so the first edit does not silently discard them.
+  const overrides = Array.isArray(pages) ? pages : []
+  return PLATFORM_TOUR_PAGES.map((page, i) => ({ ...page, ...(overrides[i] || {}) }))
 }
 
 export function movePage(list, index, direction) {
@@ -47,6 +50,7 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
   const meta = sceneMetadata?.[SCENE_ID] || {}
   const update = (patch) => onUpdateSceneMetadata(SCENE_ID, { ...meta, ...patch })
   const pages = currentPages(meta)
+  const enabledCount = pages.filter((p) => p.enabled !== false && TOUR_PAGE_REGISTRY[p.sceneId]).length
   const available = Object.keys(TOUR_PAGE_REGISTRY).filter((id) => !pages.some((p) => p.sceneId === id))
 
   const resetToDefaults = () => {
@@ -83,6 +87,9 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
                       id={checkId}
                       type="checkbox"
                       checked={page.enabled !== false}
+                      // The last enabled page stays on: with none, the engine would
+                      // fall back to the default tour and drop these settings.
+                      disabled={page.enabled !== false && enabledCount === 1}
                       onChange={(e) => update({ pages: setPage(pages, i, { enabled: e.target.checked }) })}
                     />
                     {defaultTitle}
@@ -142,7 +149,7 @@ export default function PlatformTourEditor({ sceneMetadata, onUpdateSceneMetadat
                       value={page.hold != null && !hasBeats ? page.hold / 1000 : ''}
                       onChange={(e) => {
                         const seconds = Number(e.target.value)
-                        const hasValue = e.target.value !== '' && Number.isFinite(seconds)
+                        const hasValue = e.target.value !== '' && Number.isFinite(seconds) && seconds > 0
                         update({
                           pages: setPage(pages, i, { hold: hasValue ? Math.round(seconds * 1000) : undefined }),
                         })

@@ -23,7 +23,7 @@ function renderEditor(sceneMetadata = {}) {
 
 describe('currentPages', () => {
   it('returns the default list when no pages are configured', () => {
-    expect(currentPages({})).toBe(PLATFORM_TOUR_PAGES)
+    expect(currentPages({})).toEqual(PLATFORM_TOUR_PAGES)
   })
 
   it('returns configured pages when at least one has a sceneId', () => {
@@ -31,8 +31,12 @@ describe('currentPages', () => {
     expect(currentPages({ pages })).toBe(pages)
   })
 
-  it('ignores legacy index-only overrides without a sceneId', () => {
-    expect(currentPages({ pages: [{ enabled: false }, { hold: 5000 }] })).toBe(PLATFORM_TOUR_PAGES)
+  it('shows legacy index-only overrides merged onto the defaults', () => {
+    const pages = currentPages({ pages: [{ enabled: false }, { hold: 5000 }] })
+    expect(pages).toHaveLength(PLATFORM_TOUR_PAGES.length)
+    expect(pages[0]).toEqual({ ...PLATFORM_TOUR_PAGES[0], enabled: false })
+    expect(pages[1]).toEqual({ ...PLATFORM_TOUR_PAGES[1], hold: 5000 })
+    expect(pages[2]).toEqual(PLATFORM_TOUR_PAGES[2])
   })
 })
 
@@ -128,6 +132,19 @@ describe('PlatformTourEditor', () => {
       { sceneId: 'about' },
       { sceneId: 'search-context' },
     ])
+  })
+
+  it('does not let the last enabled page be switched off', () => {
+    renderEditor({ pages: [{ sceneId: 'about' }, { sceneId: 'unified-strategy', enabled: false }] })
+    const boxes = screen.getAllByRole('checkbox')
+    expect(boxes[0].disabled).toBe(true)
+    expect(boxes[1].disabled).toBe(false)
+  })
+
+  it('clears the hold when zero or a negative number is typed', () => {
+    const onUpdate = renderEditor({ pages: [{ sceneId: 'about', hold: 9000 }] })
+    fireEvent.change(screen.getByLabelText('Hold (seconds)'), { target: { value: '0' } })
+    expect(onUpdate.mock.calls[0][1].pages).toEqual([{ sceneId: 'about' }])
   })
 
   it('reset removes pages but keeps eyebrow', () => {

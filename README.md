@@ -252,12 +252,16 @@ The editor does not expose `minHold`, `maxHold` or `pageHold`.
 import SceneTour from './tour/SceneTour'
 import { TOUR_PAGE_REGISTRY } from '../data/tourPageRegistry'
 
+// Keep this at module level. A new array on every render would reset the
+// autoplay timer each time the deck re-renders.
+const MY_TOUR_PAGES = [{ sceneId: 'about' }, { sceneId: 'data-explosion' }]
+
 export default function MyTourScene({ metadata = {} }) {
   return (
     <SceneTour
       metadata={metadata}
       registry={TOUR_PAGE_REGISTRY}
-      defaultPages={[{ sceneId: 'about' }, { sceneId: 'data-explosion' }]}
+      defaultPages={MY_TOUR_PAGES}
       eyebrow="Elastic · My Tour"
     />
   )
