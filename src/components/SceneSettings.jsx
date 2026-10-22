@@ -19,6 +19,7 @@ import {
   mergeDuplicatesIntoMigration,
 } from '../utils/sceneDuplicates'
 import { baseSceneId } from '../utils/sceneIdentity'
+import { migrateSceneIds } from '../utils/sceneIdAliases'
 
 const STORAGE_KEY = 'presentation-scene-config'
 
@@ -46,7 +47,7 @@ export function useSceneConfiguration(initialScenes) {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       try {
-        const parsed = JSON.parse(saved)
+        const parsed = migrateSceneIds(JSON.parse(saved))
         if (parsed.orderVersion !== ORDER_VERSION) {
           // Migrate to the new canonical flow (default preset), keeping edits
           // and any duplicated scenes.
@@ -79,7 +80,7 @@ export function useSceneConfiguration(initialScenes) {
     const onStorage = (e) => {
       if (e.key !== STORAGE_KEY || !e.newValue) return
       try {
-        setConfig(JSON.parse(e.newValue))
+        setConfig(migrateSceneIds(JSON.parse(e.newValue)))
       } catch {
         // Ignore malformed writes; the local config stays authoritative.
       }
@@ -608,7 +609,7 @@ export default function SceneSettings({
             activePreset: config.scenes.activePreset || CUSTOM_PRESET_ID,
             orderVersion: ORDER_VERSION
           }
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(sceneConfig))
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrateSceneIds(sceneConfig)))
         }
 
         // Import team configuration
