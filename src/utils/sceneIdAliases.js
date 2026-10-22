@@ -66,17 +66,33 @@ function rewriteKeyedObject(obj) {
 function rewriteDuplicates(list) {
   if (!Array.isArray(list)) return list
   let changed = false
-  const out = list.map((entry) => {
-    if (!isPlainObject(entry)) return entry
+  const seen = new Set()
+  const out = []
+  for (const entry of list) {
+    if (!isPlainObject(entry)) {
+      out.push(entry)
+      continue
+    }
     const id = resolveSceneId(entry.id)
     const sourceId = resolveSceneId(entry.sourceId)
-    if (id === entry.id && sourceId === entry.sourceId) return entry
+    // Two copies that now resolve to the same id would collide: keep the first.
+    if (typeof id === 'string') {
+      if (seen.has(id)) {
+        changed = true
+        continue
+      }
+      seen.add(id)
+    }
+    if (id === entry.id && sourceId === entry.sourceId) {
+      out.push(entry)
+      continue
+    }
     changed = true
     const copy = { ...entry }
     if (id !== entry.id) copy.id = id
     if (sourceId !== entry.sourceId) copy.sourceId = sourceId
-    return copy
-  })
+    out.push(copy)
+  }
   return changed ? out : list
 }
 

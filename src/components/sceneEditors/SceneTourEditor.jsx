@@ -174,7 +174,7 @@ export default function SceneTourEditor({ sceneMetadata, onUpdateSceneMetadata, 
                       value={page.hold != null && !hasBeats ? page.hold / 1000 : ''}
                       onChange={(e) => {
                         const seconds = Number(e.target.value)
-                        const hasValue = e.target.value !== '' && Number.isFinite(seconds) && seconds > 0
+                        const hasValue = e.target.value !== '' && Number.isFinite(seconds) && seconds >= 1
                         update({
                           pages: setPage(pages, i, { hold: hasValue ? Math.round(seconds * 1000) : undefined }),
                         })

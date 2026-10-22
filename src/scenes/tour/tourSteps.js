@@ -10,6 +10,9 @@ export const PAGE_HOLD_MS = 12000
 export const STEP_MIN_MS = 5000
 export const STEP_MAX_MS = 10000
 
+// The shortest per-slide hold a user override may set.
+export const MIN_PAGE_HOLD_MS = 1000
+
 /**
  * Clamps a step hold into [minHold, maxHold].
  */
@@ -66,9 +69,10 @@ function resolveEntries(entries, registry) {
       id,
       sceneId,
       title: entry.title || registryEntry.title,
-      // A zero or negative hold is meaningless (the motion hook treats 0 as "use
-      // the default"), so only a positive number overrides the registry.
-      hold: Number.isFinite(entry.hold) && entry.hold > 0 ? entry.hold : registryEntry.hold,
+      // A hold under a second would strobe, and 0 is treated by the motion hook
+      // as "use the default", so only a hold of at least a second overrides the
+      // registry.
+      hold: Number.isFinite(entry.hold) && entry.hold >= MIN_PAGE_HOLD_MS ? entry.hold : registryEntry.hold,
     })
   }
 

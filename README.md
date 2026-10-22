@@ -217,17 +217,19 @@ config loads. When you rename a scene, add an alias. Never remove one.
 ### Which slides can be added
 
 A slide can join the tour only if it works with a `metadata` prop alone. Slides
-that need state lifted into `src/App.jsx` stay out. These are: business-value,
-data-mesh, security, schema, esql, services, elastic-overview, data-tiering,
-agenda and team.
+that need state lifted into `src/App.jsx` stay out. I checked these in
+`App.jsx`: business-value, data-mesh, security, schema, esql, services,
+elastic-overview, data-tiering and agenda.
 
 Three slides are templates that ship with placeholder copy (Metrics Dashboard,
 Value by Team and Security Use Cases). Their titles end in "(template)". Fill
 in their copy on the slide first, then add them to the tour.
 
 Not included yet: search-catalog (App.jsx injects a default `scenarioId`),
-enterprise-deployment (its controls live in the App.jsx nav bar), logsdb and
-cross-cluster (not reviewed yet).
+enterprise-deployment (its controls live in the App.jsx nav bar), and team
+(reads the team context). These are not reviewed for tour use yet: logsdb,
+cross-cluster, licensing, pricing-rom, next-steps, panel, access-control,
+consolidation and whiteboard.
 
 ### Adding a slide to the tour
 
@@ -271,7 +273,8 @@ Rules for `pages`:
 - A page whose registry entry has `beats` steps through each beat. Each beat
   uses its own `hold`, clamped to `[minHold, maxHold]`.
 - A page with `stepProps`, or with neither `beats` nor `stepProps`, uses its
-  `hold` (default `pageHold`) for each step. These holds are not clamped.
+  `hold` (default `pageHold`) for each step. These holds are not clamped, but a
+  per-slide `hold` set in `pages` is ignored if it is under 1000 ms.
 
 ### Editing it
 

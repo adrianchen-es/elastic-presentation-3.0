@@ -75,6 +75,16 @@ describe('migrateSceneIds', () => {
     expect(out.order).toEqual(['scene-tour', 'hero'])
   })
 
+  it('keeps one duplicate entry when two copies now resolve to the same id', () => {
+    const out = migrateSceneIds({
+      duplicates: [
+        { id: 'platform-tour~2', sourceId: 'platform-tour', label: 'Old' },
+        { id: 'scene-tour~2', sourceId: 'scene-tour', label: 'New' },
+      ],
+    })
+    expect(out.duplicates).toEqual([{ id: 'scene-tour~2', sourceId: 'scene-tour', label: 'Old' }])
+  })
+
   it('does not mutate its input', () => {
     const input = savedConfig()
     const snapshot = JSON.parse(JSON.stringify(input))

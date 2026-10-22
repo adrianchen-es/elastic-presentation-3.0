@@ -215,10 +215,13 @@ describe('SceneTourEditor', () => {
     expect(boxes[1].disabled).toBe(false)
   })
 
-  it('clears the hold when zero or a negative number is typed', () => {
-    const onUpdate = renderEditor({ pages: [{ sceneId: 'about', hold: 9000 }] })
-    fireEvent.change(screen.getByLabelText('Hold (seconds)'), { target: { value: '0' } })
-    expect(onUpdate.mock.calls[0][1].pages).toEqual([{ sceneId: 'about' }])
+  it('clears the hold when zero, a negative number or under one second is typed', () => {
+    for (const typed of ['0', '-2', '0.5']) {
+      const onUpdate = renderEditor({ pages: [{ sceneId: 'about', hold: 9000 }] })
+      fireEvent.change(screen.getByLabelText('Hold (seconds)'), { target: { value: typed } })
+      expect(onUpdate.mock.calls[0][1].pages).toEqual([{ sceneId: 'about' }])
+      cleanup()
+    }
   })
 
   it('reset removes pages but keeps eyebrow', () => {
