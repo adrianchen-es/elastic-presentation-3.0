@@ -1,0 +1,354 @@
+import { TYPES } from "../../data/whiteboardTypes";
+import { snap, translateEdgePts, nearestPort, alignmentGuides } from "../../utils/whiteboardGeometry";
+
+/* Pointer-gesture controller for the whiteboard canvas: pan, marquee select,
+   node move/resize, zone move/resize, connect, and palette drag-and-drop.
+
+   All mutable state is owned by the component and threaded in via `deps`, so
+   the returned handlers close over fresh values on every render (matching the
+   previous inline behaviour). Refs and state setters are stable. */
+export function useDragController(deps) {
+  const {
+    dragRef, viewportRef, lastClickRef,
+    view, sel, nodes, edges, zones, nodeById,
+    setView, setMarquee, setSel, setNodes, setZones, setEdges, setConnect, setGhost, setEditing,
+    setGuides,
+    toWorld, snapshot, uid, rectOf,
+  } = deps;
+
+  /* Canceling pointerdown suppresses the browser's default mousedown actions,
+     notably native text selection — Chrome can otherwise anchor a selection at
+     the nearest selectable text (e.g. inspector inputs) even when the drag
+     starts on a user-select:none canvas. Since that also suppresses the focus
+     change, blur any focused text field so e.g. the rename input still commits. */
+  const beginGesture = (e) => {
+    e.preventDefault();
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) ae.blur();
+  };
+
+  const startPan = (e) => {
+    if (e.button !== 0) return;
+    beginGesture(e);
+    if (e.shiftKey) {                                  /* marquee select */
+      const w = toWorld(e.clientX, e.clientY);
+      dragRef.current = { mode: "marquee", x0: w.x, y0: w.y };
+      setMarquee({ x0: w.x, y0: w.y, x1: w.x, y1: w.y });
+    } else {
+      dragRef.current = { mode: "pan", sx: e.clientX, sy: e.clientY, v0: view };
+      setSel(null);
+    }
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const startMove = (e, id) => {
+    if (e.button !== 0) return;
+    beginGesture(e);
+    e.stopPropagation();
+    if (e.shiftKey) {                                  /* toggle multi-selection */
+      setSel((prev) => {
+        const ids = prev && prev.kind === "nodes" ? [...prev.ids] : [];
+        const i = ids.indexOf(id);
+        if (i >= 0) ids.splice(i, 1); else ids.push(id);
+        return ids.length ? { kind: "nodes", ids } : null;
+      });
+      return;
+    }
+    /* manual double-click detection (pointer capture retargets clicks) */
+    const now = Date.now();
+    if (lastClickRef.current.id === id && now - lastClickRef.current.t < 350) {
+      lastClickRef.current = { id: null, t: 0 };
+      setEditing(id);
+      return;
+    }
+    lastClickRef.current = { id, t: now };
+
+    const w = toWorld(e.clientX, e.clientY);
+    const already = sel && sel.kind === "nodes" && sel.ids.includes(id);
+    const ids = already ? sel.ids : [id];
+    if (!already) setSel({ kind: "nodes", ids: [id] });
+    const starts = {};
+    for (const i2 of ids) { const n = nodeById[i2]; if (n) starts[i2] = { x: n.x, y: n.y }; }
+    dragRef.current = { mode: "move", ids, starts, px: w.x, py: w.y, snapped: false };
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const startResize = (e, id) => {
+    beginGesture(e);
+    e.stopPropagation();
+    const r = rectOf(nodeById[id]);
+    const w0 = toWorld(e.clientX, e.clientY);
+    dragRef.current = { mode: "resize", id, w: r.w, h: r.h, px: w0.x, py: w0.y, snapped: false };
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  /* `port` ({side, t}) records which connection point the drag started from;
+     zones pass none and keep their single auto-anchored port. */
+  const startConnect = (e, id, port) => {
+    beginGesture(e);
+    e.stopPropagation();
+    const w = toWorld(e.clientX, e.clientY);
+    dragRef.current = { mode: "connect", from: id, ...(port ? { sa: port } : {}) };
+    viewportRef.current.setPointerCapture(e.pointerId);
+    setConnect({ from: id, ...(port ? { sa: port } : {}), cx: w.x, cy: w.y });
+  };
+
+  /* Pick up one end of an existing edge (`end` is "s" or "e") to drop it on a
+     different connection point — or a different node. The rubber band draws
+     from the end that stays put, so what the user sees is the line they will
+     get. */
+  const startReconnect = (e, edgeId, end) => {
+    beginGesture(e);
+    e.stopPropagation();
+    const ed = edges.find((x) => x.id === edgeId);
+    if (!ed) return;
+    const w = toWorld(e.clientX, e.clientY);
+    const fixedId = end === "s" ? ed.e : ed.s;
+    const fixedAnchor = end === "s" ? ed.ea : ed.sa;
+    dragRef.current = { mode: "reconnect", edgeId, end };
+    viewportRef.current.setPointerCapture(e.pointerId);
+    setConnect({ from: fixedId, ...(fixedAnchor ? { sa: fixedAnchor } : {}), cx: w.x, cy: w.y });
+  };
+
+  /* What a connection drop landed on: a node (with its nearest connection
+     point), else the topmost zone, else nothing. */
+  const dropTarget = (w) => {
+    const hitNode = nodes.find((n) => {
+      const r = rectOf(n);
+      return w.x >= r.x && w.x <= r.x + r.w && w.y >= r.y && w.y <= r.y + r.h;
+    });
+    const hitZone = !hitNode && [...zones].reverse().find((z) =>
+      w.x >= z.x && w.x <= z.x + z.w && w.y >= z.y && w.y <= z.y + z.h);
+    const port = hitNode ? nearestPort(rectOf(hitNode), w) : null;
+    return { id: hitNode ? hitNode.id : hitZone ? hitZone.id : null,
+             anchor: port ? { side: port.side, t: port.t } : null };
+  };
+
+  /* Start dragging a connector waypoint. When `insertAt` is given a new
+     waypoint is inserted at `index` first (used by the "add bend" handles). */
+  const startEdgePoint = (e, edgeId, index, insertAt) => {
+    beginGesture(e);
+    e.stopPropagation();
+    snapshot();
+    if (insertAt) {
+      const p = { x: snap(insertAt.x), y: snap(insertAt.y) };
+      setEdges((es) => es.map((x) => {
+        if (x.id !== edgeId) return x;
+        const pts = (x.pts || []).slice();
+        pts.splice(index, 0, p);
+        return { ...x, pts };
+      }));
+    }
+    dragRef.current = { mode: "edgept", edgeId, index };
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const startZoneMove = (e, id) => {
+    if (e.button !== 0) return;
+    beginGesture(e);
+    e.stopPropagation();
+    if (e.shiftKey) {                                  /* toggle multi-zone selection */
+      setSel((prev) => {
+        const ids = prev && prev.kind === "zones" ? [...prev.ids]
+                  : prev && prev.kind === "zone" ? [prev.id] : [];
+        const i = ids.indexOf(id);
+        if (i >= 0) ids.splice(i, 1); else ids.push(id);
+        return ids.length > 1 ? { kind: "zones", ids }
+             : ids.length === 1 ? { kind: "zone", id: ids[0] } : null;
+      });
+      return;
+    }
+    setSel({ kind: "zone", id });
+    const z = zones.find((x) => x.id === id);
+    const w = toWorld(e.clientX, e.clientY);
+    /* zone drags its contents: capture nodes whose centers are inside.
+       Alt+drag moves the zone frame alone, leaving its contents in place. */
+    const nstarts = {};
+    if (!e.altKey) {
+      for (const n of nodes) {
+        const r = rectOf(n);
+        const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        if (cx >= z.x && cx <= z.x + z.w && cy >= z.y && cy <= z.y + z.h)
+          nstarts[n.id] = { x: n.x, y: n.y };
+      }
+    }
+    dragRef.current = { mode: "zmove", id, zx: z.x, zy: z.y, nstarts, px: w.x, py: w.y, snapped: false };
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const startZoneResize = (e, id) => {
+    beginGesture(e);
+    e.stopPropagation();
+    const z = zones.find((x) => x.id === id);
+    const w = toWorld(e.clientX, e.clientY);
+    dragRef.current = { mode: "zresize", id, w: z.w, h: z.h, px: w.x, py: w.y, snapped: false };
+    viewportRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const paletteMove = (e) => setGhost((g) => (g ? { ...g, cx: e.clientX, cy: e.clientY } : g));
+  const paletteUp = (e) => {
+    window.removeEventListener("pointermove", paletteMove);
+    const d = dragRef.current;
+    dragRef.current = null;
+    setGhost(null);
+    if (!d || d.mode !== "palette") return;
+    const r = viewportRef.current.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    const w = toWorld(e.clientX, e.clientY);
+    const t = TYPES[d.type];
+    const id = uid("n");
+    snapshot();
+    setNodes((ns) => [...ns, { id, type: d.type, x: snap(w.x - t.w / 2), y: snap(w.y - t.h / 2) }]);
+    setSel({ kind: "nodes", ids: [id] });
+  };
+  const startPalette = (e, type) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    dragRef.current = { mode: "palette", type };
+    setGhost({ type, cx: e.clientX, cy: e.clientY });
+    window.addEventListener("pointermove", paletteMove);
+    window.addEventListener("pointerup", paletteUp, { once: true });
+  };
+
+  const onMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const lazySnap = () => { if (!d.snapped) { snapshot(); d.snapped = true; } };
+    if (d.mode === "pan") {
+      setView({ ...d.v0, x: d.v0.x + (e.clientX - d.sx), y: d.v0.y + (e.clientY - d.sy) });
+    } else if (d.mode === "marquee") {
+      const w = toWorld(e.clientX, e.clientY);
+      setMarquee({ x0: d.x0, y0: d.y0, x1: w.x, y1: w.y });
+    } else if (d.mode === "move") {
+      lazySnap();
+      const w = toWorld(e.clientX, e.clientY);
+      const dx = w.x - d.px, dy = w.y - d.py;
+      /* The lead node follows the pointer; a live alignment guide beats the
+         grid on its axis, and the whole selection shifts by the lead's delta
+         so a guided group stays rigid. */
+      const id0 = d.ids[0];
+      const s0 = d.starts[id0];
+      const lead = { ...rectOf(nodeById[id0]), x: s0.x + dx, y: s0.y + dy };
+      const hit = alignmentGuides(lead, nodes.filter((n) => !d.starts[n.id]).map(rectOf));
+      const fdx = (hit.x !== undefined ? hit.x : snap(lead.x)) - s0.x;
+      const fdy = (hit.y !== undefined ? hit.y : snap(lead.y)) - s0.y;
+      d.lastDx = fdx; d.lastDy = fdy;
+      setGuides(hit.guides.length ? hit.guides : null);
+      setNodes((ns) => ns.map((n) => d.starts[n.id]
+        ? { ...n, x: d.starts[n.id].x + fdx, y: d.starts[n.id].y + fdy } : n));
+    } else if (d.mode === "resize") {
+      lazySnap();
+      const w = toWorld(e.clientX, e.clientY);
+      const nw = Math.max(96, Math.min(640, snap(d.w + (w.x - d.px))));
+      const nh = Math.max(48, Math.min(420, snap(d.h + (w.y - d.py))));
+      setNodes((ns) => ns.map((n) => (n.id === d.id ? { ...n, w: nw, h: nh } : n)));
+    } else if (d.mode === "zmove") {
+      lazySnap();
+      const w = toWorld(e.clientX, e.clientY);
+      const dx = w.x - d.px, dy = w.y - d.py;
+      setZones((zs) => zs.map((z) => (z.id === d.id ? { ...z, x: snap(d.zx + dx), y: snap(d.zy + dy) } : z)));
+      setNodes((ns) => ns.map((n) => d.nstarts[n.id]
+        ? { ...n, x: snap(d.nstarts[n.id].x + dx), y: snap(d.nstarts[n.id].y + dy) } : n));
+    } else if (d.mode === "zresize") {
+      lazySnap();
+      const w = toWorld(e.clientX, e.clientY);
+      const nw = Math.max(160, Math.min(2400, snap(d.w + (w.x - d.px))));
+      const nh = Math.max(120, Math.min(1600, snap(d.h + (w.y - d.py))));
+      setZones((zs) => zs.map((z) => (z.id === d.id ? { ...z, w: nw, h: nh } : z)));
+    } else if (d.mode === "connect" || d.mode === "reconnect") {
+      const w = toWorld(e.clientX, e.clientY);
+      setConnect((c) => (c ? { ...c, cx: w.x, cy: w.y } : c));
+    } else if (d.mode === "edgept") {
+      const w = toWorld(e.clientX, e.clientY);
+      const p = { x: snap(w.x), y: snap(w.y) };
+      setEdges((es) => es.map((x) => (x.id === d.edgeId
+        ? { ...x, pts: (x.pts || []).map((q, i) => (i === d.index ? p : q)) } : x)));
+    }
+  };
+
+  const onUp = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    if (d.mode === "palette") return;                  /* finalized by window paletteUp */
+    dragRef.current = null;
+    if (d.mode === "move" || d.mode === "zmove") {
+      const w = toWorld(e.clientX, e.clientY);
+      const rawDx = w.x - d.px, rawDy = w.y - d.py;
+      if (d.mode === "move") {
+        setGuides(null);
+        // the delta the nodes actually took, guide corrections included
+        const dx = d.lastDx || 0;
+        const dy = d.lastDy || 0;
+        if (dx || dy) setEdges((es) => translateEdgePts(es, d.ids, dx, dy));
+      } else {
+        const dx = snap(d.zx + rawDx) - d.zx;
+        const dy = snap(d.zy + rawDy) - d.zy;
+        if (dx || dy) {
+          const moved = new Set([d.id, ...Object.keys(d.nstarts)]);
+          const zoneFrameOnly = !Object.keys(d.nstarts).length;
+          setEdges((es) => translateEdgePts(es, moved, dx, dy, { zoneFrameOnly }));
+        }
+      }
+    }
+    if (d.mode === "connect") {
+      // dropping on a node attaches at its connection point nearest the pointer
+      const { id: target, anchor: ea } = dropTarget(toWorld(e.clientX, e.clientY));
+      const sameAnchor = (p, q) => (p?.side || "") === (q?.side || "") && (p?.t ?? 0.5) === (q?.t ?? 0.5);
+      // a second line between the same pair is fine as long as it lands on
+      // different connection points; an exact duplicate is not
+      if (target && target !== d.from &&
+          !edges.some((ed) => ed.s === d.from && ed.e === target
+                              && sameAnchor(ed.sa, d.sa) && sameAnchor(ed.ea, ea))) {
+        snapshot();
+        setEdges((es) => [...es, { id: uid("e"), s: d.from, e: target,
+                                   ...(d.sa ? { sa: d.sa } : {}), ...(ea ? { ea } : {}) }]);
+      }
+      setConnect(null);
+    } else if (d.mode === "reconnect") {
+      const { id: target, anchor } = dropTarget(toWorld(e.clientX, e.clientY));
+      const ed = edges.find((x) => x.id === d.edgeId);
+      const fixedId = ed && (d.end === "s" ? ed.e : ed.s);
+      // a miss (or a self-loop) leaves the connection exactly as it was
+      if (ed && target && target !== fixedId) {
+        snapshot();
+        setEdges((es) => es.map((x) => {
+          if (x.id !== d.edgeId) return x;
+          const anchorKey = d.end === "s" ? "sa" : "ea";
+          const { [anchorKey]: _oldAnchor, ...rest } = x;
+          const moved = { ...rest, [d.end]: target, ...(anchor ? { [anchorKey]: anchor } : {}) };
+          // hand-placed bends were shaped around the old endpoint; landing on
+          // a different node makes them stale, re-anchoring on the same one doesn't
+          if (target !== x[d.end]) delete moved.pts;
+          return moved;
+        }));
+      }
+      setConnect(null);
+    } else if (d.mode === "marquee") {
+      const w = toWorld(e.clientX, e.clientY);
+      const x0 = Math.min(d.x0, w.x), x1 = Math.max(d.x0, w.x);
+      const y0 = Math.min(d.y0, w.y), y1 = Math.max(d.y0, w.y);
+      const ids = nodes.filter((n) => {
+        const r = rectOf(n);
+        return r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0;
+      }).map((n) => n.id);
+      /* zones join the selection only when fully enclosed, so sweeping a few
+         nodes inside a large zone doesn't accidentally grab the zone frame */
+      const zoneIds = zones.filter((z) =>
+        z.x >= x0 && z.y >= y0 && z.x + z.w <= x1 && z.y + z.h <= y1
+      ).map((z) => z.id);
+      setSel(
+        ids.length && zoneIds.length ? { kind: "mixed", ids, zoneIds }
+        : ids.length ? { kind: "nodes", ids }
+        : zoneIds.length > 1 ? { kind: "zones", ids: zoneIds }
+        : zoneIds.length === 1 ? { kind: "zone", id: zoneIds[0] }
+        : null
+      );
+      setMarquee(null);
+    }
+  };
+
+  return {
+    startPan, startMove, startResize, startConnect, startReconnect, startZoneMove, startZoneResize,
+    startPalette, startEdgePoint, onMove, onUp,
+  };
+}

@@ -1,0 +1,1136 @@
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { TeamProvider } from './context/TeamContext'
+import { SceneMotionProvider, useSceneMotionControls } from './context/SceneMotionContext'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faSun, faMoon, faMagnifyingGlass, faGear, faShield, faForwardStep, faPlay, faPause, faRotateRight, faChevronRight, faChevronLeft, faBolt, faLayerGroup, faTimes, faCircleNodes, faChalkboardUser, faPrint } from '@fortawesome/free-solid-svg-icons'
+import SceneSettings, { useSceneConfiguration } from './components/SceneSettings'
+import HeroScene from './scenes/HeroScene'
+import { SCENE_REGISTRY } from './data/sceneRegistry'
+import { usePresenterSync } from './presenter/usePresenterSync'
+import PresenterView from './presenter/PresenterView'
+import { baseSceneId } from './utils/sceneIdentity'
+
+function AppContent() {
+  const { theme, toggleTheme } = useTheme()
+  const { controls: motionControls } = useSceneMotionControls()
+  
+
+  const {
+    enabledScenes,
+    enabledSceneIds,
+    orderedScenes,
+    customDurations,
+    sceneMetadata,
+    activePreset,
+    presets,
+    applyPreset,
+    toggleScene,
+    updateDuration,
+    updateSceneMetadata,
+    updateOrder,
+    resetToDefault,
+    duplicateScene,
+    deleteDuplicate,
+    duplicates,
+  } = useSceneConfiguration(SCENE_REGISTRY)
+
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const scenes = enabledScenes
+
+  const sceneIdFromUrl = location.pathname.slice(1)
+  const currentScene = (() => {
+    const idx = scenes.findIndex(s => s.id === sceneIdFromUrl)
+    return idx >= 0 ? idx : 0
+  })()
+
+  // Redirect to first enabled scene if URL is missing or unrecognised
+  useEffect(() => {
+    const idx = scenes.findIndex(s => s.id === sceneIdFromUrl)
+    if (idx === -1 && scenes.length > 0) {
+      navigate(`/${scenes[0].id}`, { replace: true })
+    }
+  }, [sceneIdFromUrl, scenes, navigate])
+
+  const navigateToScene = (index) => {
+    const clamped = Math.max(0, Math.min(index, scenes.length - 1))
+    navigate(`/${scenes[clamped].id}`)
+  }
+
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [sceneMenuOpen, setSceneMenuOpen] = useState(false)
+  const [sceneQuery, setSceneQuery] = useState('')
+  const [securityStage, setSecurityStage] = useState(0)
+  const [securityPlaySignal, setSecurityPlaySignal] = useState(0)
+  const [securityAlertPhase, setSecurityAlertPhase] = useState('idle')
+  const [securityPhaseSignal, setSecurityPhaseSignal] = useState(0)
+  const [schemaPlaySignal, setSchemaPlaySignal] = useState(0)
+  const [schemaStage, setSchemaStage] = useState(0)
+  const SECURITY_STAGE_COUNT = 3
+  const SCHEMA_STAGE_COUNT = 2
+  const ESQL_STAGE_COUNT = 6
+  const SERVICES_STAGE_COUNT = 4
+  const [esqlStage, setEsqlStage] = useState(0)
+  const ELASTIC_OVERVIEW_STAGE_COUNT = 4
+  const [elasticOverviewStage, setElasticOverviewStage] = useState(0)
+  const [servicesStage, setServicesStage] = useState(0)
+  const [demoPhase, setDemoPhase] = useState('idle')
+
+  const handleDemoAdvance = () => {
+    const next = { idle: 'deployed', deployed: 'preparing', preparing: 'stopping', stopping: 'validating', validating: 'usecases', usecases: 'complete' }
+    setDemoPhase(p => next[p] ?? p)
+  }
+  const handleDemoBack = () => {
+    const prev = { deployed: 'idle', preparing: 'deployed', stopping: 'preparing', validating: 'stopping', usecases: 'validating', complete: 'usecases' }
+    setDemoPhase(p => prev[p] ?? p)
+  }
+  const [businessValueSelectedCard, setBusinessValueSelectedCard] = useState(null)
+  const [businessValueShowUnified, setBusinessValueShowUnified] = useState(false)
+  const [dataExplosionVerdictSignal, setDataExplosionVerdictSignal] = useState(0)
+  const [dataMeshRunQuerySignal, setDataMeshRunQuerySignal] = useState(0)
+  const [dataMeshQueryState, setDataMeshQueryState] = useState({ canRun: false, isRunning: false })
+  const [dataMeshPlaySignal, setDataMeshPlaySignal] = useState(0)
+  const [dataMeshPlayState, setDataMeshPlayState] = useState({ canPlay: false })
+  const [dataMeshSummarySignal, setDataMeshSummarySignal] = useState(0)
+  const [dataMeshSummaryState, setDataMeshSummaryState] = useState({ canToggle: false, isShowing: false })
+  const [dataMeshActivateMeshSignal, setDataMeshActivateMeshSignal] = useState(0)
+  const [dataMeshActivateMeshState, setDataMeshActivateMeshState] = useState({ canActivate: false })
+  const [dataTieringIsRunning, setDataTieringIsRunning] = useState(false)
+  const [dataTieringResetSignal, setDataTieringResetSignal] = useState(0)
+  const [agendaExpanded, setAgendaExpanded] = useState({})
+  const [agendaExpandAllSignal, setAgendaExpandAllSignal] = useState(0)
+  const agendaAnyExpanded = Object.values(agendaExpanded).some(Boolean)
+  
+  // Pass props to scenes
+  const Scene = scenes[currentScene]?.component || HeroScene
+  const currentSceneId = scenes[currentScene]?.id
+  const currentBaseId = baseSceneId(currentSceneId)
+  const currentMeta = sceneMetadata?.[currentSceneId] || {}
+  
+  let sceneProps = {}
+  if (currentBaseId === 'agenda') {
+    sceneProps = {
+      scenes: orderedScenes,
+      sceneMetadata,
+      customDurations,
+      metadata: currentMeta,
+      expanded: agendaExpanded,
+      setExpanded: setAgendaExpanded,
+      expandAllSignal: agendaExpandAllSignal,
+    }
+  } else if (currentBaseId === 'hero') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'about') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'business-value') {
+    sceneProps = {
+      selectedCard: businessValueSelectedCard,
+      setSelectedCard: setBusinessValueSelectedCard,
+      showUnifiedMessage: businessValueShowUnified,
+      setShowUnifiedMessage: setBusinessValueShowUnified,
+      metadata: currentMeta
+    }
+  } else if (currentBaseId === 'problem-patterns') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'logsdb') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'ai-assistant') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'customer-architect') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'elastic-exploded') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'unified-strategy') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'data-explosion') {
+    sceneProps = {
+      metadata: currentMeta,
+      verdictSignal: dataExplosionVerdictSignal,
+    }
+  } else if (currentBaseId === 'data-mesh') {
+    sceneProps = {
+      scenes: enabledScenes,
+      onNavigate: (i) => navigateToScene(i),
+      metadata: currentMeta,
+      runQuerySignal: dataMeshRunQuerySignal,
+      onQueryStateChange: setDataMeshQueryState,
+      playSignal: dataMeshPlaySignal,
+      onPlayStateChange: setDataMeshPlayState,
+      summarySignal: dataMeshSummarySignal,
+      onSummaryStateChange: setDataMeshSummaryState,
+      activateMeshSignal: dataMeshActivateMeshSignal,
+      onActivateMeshStateChange: setDataMeshActivateMeshState,
+    }
+  } else if (currentBaseId === 'cross-cluster') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'security-narrative-visual') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'security-soc-model') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'security-capabilities') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'security') {
+    sceneProps = {
+      externalStage: securityStage,
+      onStageChange: setSecurityStage,
+      playSignal: securityPlaySignal,
+      phaseAdvanceSignal: securityPhaseSignal,
+      onAlertPhaseChange: setSecurityAlertPhase,
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'licensing') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'pricing-rom') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'elastic-value') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'platform-operations') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'platform-value') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'value-by-team') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'security-use-cases') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'schema') {
+    sceneProps = {
+      externalStage: schemaStage,
+      onStageChange: setSchemaStage,
+      playSignal: schemaPlaySignal,
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'access-control') {
+    sceneProps = {
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'data-tiering') {
+    sceneProps = {
+      isRunning: dataTieringIsRunning,
+      setIsRunning: setDataTieringIsRunning,
+      resetSignal: dataTieringResetSignal,
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'consolidation') {
+    sceneProps = {
+      tools: currentMeta.tools,
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'esql') {
+    sceneProps = {
+      metadata: currentMeta,
+      externalStage: esqlStage,
+      onStageChange: setEsqlStage,
+    }
+  } else if (currentBaseId === 'services') {
+    sceneProps = {
+      externalStage: servicesStage,
+      onStageChange: (s) => { setServicesStage(s); if (s !== 2) setDemoPhase('idle') },
+      demoPhase,
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'next-steps') {
+    sceneProps = {
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'panel') {
+    sceneProps = {
+      metadata: currentMeta,
+    }
+  } else if (currentBaseId === 'obs-ai-scale') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-heritage') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-three-layers') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-pillars') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-signals') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'nightshift-sre') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-streams') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-otel') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-kubernetes') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-mcp-app') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-agentic') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-discovery') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'obs-surfaces') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'nightshift-arch') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'core-components') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'node-types') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'elastic-overview') {
+    sceneProps = {
+      metadata: currentMeta,
+      externalStage: elasticOverviewStage,
+      onStageChange: setElasticOverviewStage,
+    }
+  } else if (currentBaseId === 'enterprise-deployment') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-catalog') {
+    sceneProps = { metadata: { scenarioId: 'dib', ...currentMeta } }
+  } else if (currentBaseId === 'search-challenge') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-vector-scale') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-vector') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-gpu') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-inference') {
+    sceneProps = { metadata: currentMeta }
+  } else if (currentBaseId === 'search-context') {
+    sceneProps = { metadata: currentMeta }
+  }
+
+  const handleNext = () => {
+    setSecurityStage(0)
+    setSchemaStage(0)
+    setEsqlStage(0)
+    setServicesStage(0)
+    setElasticOverviewStage(0)
+    navigateToScene(currentScene + 1)
+  }
+
+  const handlePrev = () => {
+    setSecurityStage(0)
+    setSchemaStage(0)
+    setElasticOverviewStage(0)
+    navigateToScene(currentScene - 1)
+  }
+
+  const sceneTitle = (scene) => sceneMetadata?.[scene.id]?.title || scene.title
+
+  // Step controls for scenes whose stage state is lifted into App (instead of
+  // useSceneMotion), so the presenter view can drive them too.
+  const liftedStageControls = (() => {
+    switch (currentBaseId) {
+      case 'security':
+        return { stage: securityStage, count: SECURITY_STAGE_COUNT, setStage: setSecurityStage }
+      case 'schema':
+        return { stage: schemaStage, count: SCHEMA_STAGE_COUNT, setStage: setSchemaStage }
+      case 'esql':
+        return { stage: esqlStage, count: ESQL_STAGE_COUNT, setStage: setEsqlStage }
+      case 'elastic-overview':
+        return { stage: elasticOverviewStage, count: ELASTIC_OVERVIEW_STAGE_COUNT, setStage: setElasticOverviewStage }
+      case 'services':
+        return { stage: servicesStage, count: SERVICES_STAGE_COUNT, setStage: (s) => { setServicesStage(s); if (s !== 2) setDemoPhase('idle') } }
+      default:
+        return null
+    }
+  })()
+
+  // In-scene trigger buttons currently available in the nav bar, mirrored to
+  // the presenter view so animations can be fired remotely. Each entry's `run`
+  // stays in this tab; only { id, label, disabled } is broadcast.
+  const sceneActions = (() => {
+    const actions = []
+    if (currentBaseId === 'agenda') {
+      actions.push({
+        id: 'agenda-toggle-all',
+        label: agendaAnyExpanded ? 'Collapse all' : 'Expand all',
+        run: () => { if (agendaAnyExpanded) setAgendaExpanded({}); else setAgendaExpandAllSignal(n => n + 1) },
+      })
+    }
+    if (currentBaseId === 'business-value' && businessValueSelectedCard && !businessValueShowUnified) {
+      actions.push({ id: 'bv-unified', label: 'Show unified message', run: () => setBusinessValueShowUnified(true) })
+    }
+    if (currentBaseId === 'data-explosion') {
+      actions.push({ id: 'reveal-verdict', label: 'Reveal verdict', run: () => setDataExplosionVerdictSignal(n => n + 1) })
+    }
+    if (currentBaseId === 'security') {
+      actions.push({ id: 'security-play', label: 'Play animation', run: () => setSecurityPlaySignal(n => n + 1) })
+      if (securityAlertPhase === 'flooding' || securityAlertPhase === 'connecting') {
+        actions.push({ id: 'security-phase', label: 'Show attack story', run: () => setSecurityPhaseSignal(n => n + 1) })
+      }
+    }
+    if (currentBaseId === 'data-mesh') {
+      if (dataMeshPlayState.canPlay) {
+        actions.push({ id: 'mesh-play', label: 'Play typing', run: () => setDataMeshPlaySignal(n => n + 1) })
+      }
+      if (dataMeshActivateMeshState.canActivate) {
+        actions.push({ id: 'mesh-activate', label: 'Activate mesh', run: () => setDataMeshActivateMeshSignal(n => n + 1) })
+      }
+      if (dataMeshQueryState.canRun) {
+        actions.push({
+          id: 'mesh-query',
+          label: dataMeshQueryState.isRunning ? 'Running query…' : 'Run query',
+          disabled: dataMeshQueryState.isRunning,
+          run: () => setDataMeshRunQuerySignal(n => n + 1),
+        })
+      }
+      if (dataMeshSummaryState.canToggle) {
+        actions.push({
+          id: 'mesh-summary',
+          label: dataMeshSummaryState.isShowing ? 'Back to cards' : 'Compare all',
+          run: () => setDataMeshSummarySignal(n => n + 1),
+        })
+      }
+    }
+    if (currentBaseId === 'data-tiering') {
+      actions.push({ id: 'tiering-toggle', label: dataTieringIsRunning ? 'Pause flow' : 'Start flow', run: () => setDataTieringIsRunning(r => !r) })
+      actions.push({ id: 'tiering-reset', label: 'Reset', run: () => { setDataTieringIsRunning(false); setDataTieringResetSignal(n => n + 1) } })
+    }
+    if (currentBaseId === 'services' && servicesStage === 2) {
+      actions.push({ id: 'demo-back', label: 'Demo back', disabled: demoPhase === 'idle', run: handleDemoBack })
+      actions.push({ id: 'demo-reset', label: 'Reset demo', disabled: demoPhase === 'idle', run: () => setDemoPhase('idle') })
+      actions.push({ id: 'demo-next', label: 'Demo next', disabled: demoPhase === 'complete', run: handleDemoAdvance })
+    }
+    // Controls the active scene published to the nav (per-beat action button
+    // and bespoke toggles like AI Scale's reveal/hide).
+    if (motionControls?.action) {
+      actions.push({
+        id: 'scene-action',
+        label: motionControls.action.title || 'Trigger',
+        disabled: motionControls.action.disabled,
+        run: () => motionControls.action.onClick?.(),
+      })
+    }
+    if (motionControls?.onTogglePlay && motionControls?.toggleIcon) {
+      actions.push({
+        id: 'scene-toggle',
+        label: motionControls.isPlaying
+          ? (motionControls.toggleTitleActive || 'Pause auto-play')
+          : (motionControls.toggleTitle || 'Auto-play'),
+        run: () => motionControls.onTogglePlay(),
+      })
+    }
+    return actions
+  })()
+
+  // Live interactive state (signals, demo phase, selections) mirrored to the
+  // presenter's current-scene preview so trigger-driven animations render
+  // there too. Values must be serializable and use the scene's prop names.
+  const previewProps = (() => {
+    switch (currentBaseId) {
+      case 'agenda':
+        return { expanded: agendaExpanded, expandAllSignal: agendaExpandAllSignal }
+      case 'business-value':
+        return { selectedCard: businessValueSelectedCard, showUnifiedMessage: businessValueShowUnified }
+      case 'data-explosion':
+        return { verdictSignal: dataExplosionVerdictSignal }
+      case 'data-mesh':
+        return {
+          runQuerySignal: dataMeshRunQuerySignal,
+          playSignal: dataMeshPlaySignal,
+          summarySignal: dataMeshSummarySignal,
+          activateMeshSignal: dataMeshActivateMeshSignal,
+        }
+      case 'security':
+        return { playSignal: securityPlaySignal, phaseAdvanceSignal: securityPhaseSignal }
+      case 'schema':
+        return { playSignal: schemaPlaySignal }
+      case 'services':
+        return { demoPhase }
+      case 'data-tiering':
+        return { isRunning: dataTieringIsRunning, resetSignal: dataTieringResetSignal }
+      default:
+        return {}
+    }
+  })()
+
+  usePresenterSync({
+    sceneId: currentSceneId,
+    sceneIndex: currentScene,
+    sceneCount: scenes.length,
+    onNextScene: handleNext,
+    onPrevScene: handlePrev,
+    onGoToScene: (sceneId) => {
+      const idx = scenes.findIndex(s => s.id === sceneId)
+      if (idx >= 0) navigateToScene(idx)
+    },
+    stageControls: liftedStageControls,
+    sceneActions,
+    previewProps,
+  })
+
+  const openPresenterView = () => {
+    window.open(`${window.location.origin}${window.location.pathname}#/presenter`, 'elastic-deck-presenter')
+  }
+
+  // Global keyboard navigation for live presenting (ignored while typing or in Settings).
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (settingsOpen) return
+      const el = e.target
+      const tag = el?.tagName
+      if (el?.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        if (currentScene < scenes.length - 1) { e.preventDefault(); handleNext() }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (currentScene > 0) { e.preventDefault(); handlePrev() }
+      } else if (e.key === 'Escape') {
+        setSceneMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScene, scenes.length, settingsOpen])
+
+  // Close the jump menu whenever the active scene changes.
+  useEffect(() => {
+    setSceneMenuOpen(false)
+    setSceneQuery('')
+  }, [currentSceneId])
+
+  // Reset scene-specific state when navigating away
+  useEffect(() => {
+    if (currentBaseId !== 'business-value') {
+      setBusinessValueSelectedCard(null)
+      setBusinessValueShowUnified(false)
+    }
+    if (currentBaseId !== 'data-explosion') {
+      setDataExplosionVerdictSignal(0)
+    }
+    if (currentBaseId !== 'security') {
+      setSecurityStage(0)
+      setSecurityPlaySignal(0)
+      setSecurityAlertPhase('idle')
+      setSecurityPhaseSignal(0)
+    }
+    if (currentBaseId !== 'schema') {
+      setSchemaPlaySignal(0)
+      setSchemaStage(0)
+    }
+    if (currentBaseId !== 'elastic-overview') {
+      setElasticOverviewStage(0)
+    }
+  }, [currentSceneId])
+
+  return (
+    <div className="min-h-screen bg-elastic-light-grey dark:bg-elastic-dev-blue transition-colors duration-300">
+      {/* Scene Settings */}
+      <SceneSettings
+        scenes={orderedScenes}
+        enabledSceneIds={enabledSceneIds}
+        customDurations={customDurations}
+        sceneMetadata={sceneMetadata}
+        onToggle={toggleScene}
+        onUpdateDuration={updateDuration}
+        onUpdateSceneMetadata={updateSceneMetadata}
+        onUpdateOrder={updateOrder}
+        onReset={resetToDefault}
+        onDuplicate={duplicateScene}
+        onDeleteDuplicate={deleteDuplicate}
+        duplicates={duplicates}
+        presets={presets}
+        activePreset={activePreset}
+        onApplyPreset={applyPreset}
+        isOpen={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+
+      {/* Scene Container */}
+      <div className="h-[calc(100vh-76px)] flex items-center justify-center" data-scene-root>
+        <Scene {...sceneProps} />
+      </div>
+      
+      {/* Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 w-full py-4 border-t backdrop-blur-md bg-elastic-light-grey/85 dark:bg-elastic-dev-blue/85 border-elastic-dev-blue/10 dark:border-white/10 shadow-[0_-4px_20px_rgba(11,22,40,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+        {/* Tiny credit line, centered and out of the way of the controls */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:block text-[5px] tracking-wide whitespace-nowrap text-elastic-dev-blue/40 dark:text-white/40">
+          Built and managed by Daniel Barr | <a href="https://elastic.co" target="_blank" rel="noreferrer" className="pointer-events-auto hover:underline">elastic.co</a> | 2026
+        </div>
+        <div className="flex items-center justify-between max-w-[95%] mx-auto">
+          {/* Left: Theme Toggle and Settings */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                theme === 'dark' 
+                  ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal' 
+                  : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+              }`}
+              aria-label="Toggle theme"
+            >
+              <FontAwesomeIcon 
+                icon={theme === 'dark' ? faSun : faMoon} 
+                className="text-lg"
+              />
+            </button>
+            
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                theme === 'dark' 
+                  ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal' 
+                  : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+              }`}
+              title="Settings"
+            >
+              <FontAwesomeIcon icon={faGear} className="text-lg" />
+            </button>
+
+            <button
+              onClick={openPresenterView}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                theme === 'dark' 
+                  ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal' 
+                  : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+              }`}
+              title="Open presenter view"
+            >
+              <FontAwesomeIcon icon={faChalkboardUser} className="text-base" />
+            </button>
+
+            <button
+              onClick={() => navigate('/print')}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                theme === 'dark' 
+                  ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal' 
+                  : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+              }`}
+              title="Print handout"
+              aria-label="Print handout"
+            >
+              <FontAwesomeIcon icon={faPrint} className="text-base" />
+            </button>
+
+            {/* Custom content toggle - only scenes that repurpose the toggle with a
+                bespoke icon (e.g. reveal/hide). Generic auto-play is not shown. */}
+            {motionControls?.onTogglePlay && motionControls?.toggleIcon && (
+              <button
+                onClick={motionControls.onTogglePlay}
+                aria-pressed={motionControls.isPlaying}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  motionControls.isPlaying
+                    ? theme === 'dark'
+                      ? 'bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/20 text-elastic-blue'
+                    : theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title={motionControls.isPlaying
+                  ? (motionControls.toggleTitleActive || 'Pause auto-play')
+                  : (motionControls.toggleTitle || 'Auto-play')}
+              >
+                <FontAwesomeIcon
+                  icon={motionControls.isPlaying
+                    ? (motionControls.toggleIconActive || faPause)
+                    : (motionControls.toggleIcon || faPlay)}
+                  className={`text-sm ${motionControls.isPlaying || motionControls.toggleIcon ? '' : 'ml-0.5'}`}
+                />
+              </button>
+            )}
+
+            {/* Per-beat action button - narrative scenes that publish one (e.g. trigger an in-scene event) */}
+            {motionControls?.action && (
+              <button
+                onClick={motionControls.action.onClick}
+                disabled={motionControls.action.disabled}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-40 disabled:hover:scale-100 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title={motionControls.action.title}
+              >
+                <FontAwesomeIcon icon={motionControls.action.icon} className="text-sm" />
+              </button>
+            )}
+
+            {/* Expand/collapse all agenda blocks - only visible on Agenda scene */}
+            {currentBaseId === 'agenda' && (
+              <button
+                onClick={() => {
+                  if (agendaAnyExpanded) setAgendaExpanded({})
+                  else setAgendaExpandAllSignal(n => n + 1)
+                }}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title={agendaAnyExpanded ? 'Collapse all scenes' : 'Expand all scenes'}
+              >
+                <FontAwesomeIcon icon={faLayerGroup} className="text-base" />
+              </button>
+            )}
+
+            {/* Air-gapped toggle - only visible on Enterprise Deployment scene */}
+            {currentBaseId === 'enterprise-deployment' && (() => {
+              const airGapped = !!sceneMetadata?.['enterprise-deployment']?.airGapped
+              return (
+                <button
+                  onClick={() => updateSceneMetadata('enterprise-deployment', { airGapped: !airGapped })}
+                  className={`h-10 px-4 rounded-full flex items-center gap-2 text-sm font-semibold transition-all hover:scale-105 ${
+                    airGapped
+                      ? theme === 'dark'
+                        ? 'bg-elastic-teal/25 text-elastic-teal border border-elastic-teal/40'
+                        : 'bg-elastic-blue/15 text-elastic-blue border border-elastic-blue/30'
+                      : theme === 'dark'
+                        ? 'bg-white/10 text-white/60 border border-white/15 hover:text-white/80'
+                        : 'bg-white text-elastic-dev-blue/60 border border-elastic-dev-blue/15 hover:text-elastic-dev-blue'
+                  }`}
+                  title="Toggle air-gapped support services"
+                  aria-pressed={airGapped}
+                >
+                  <FontAwesomeIcon icon={faShield} className="text-sm" />
+                  Air-gapped {airGapped ? 'On' : 'Off'}
+                </button>
+              )
+            })()}
+
+            {/* Data-path legend - only visible on Enterprise Deployment scene */}
+            {currentBaseId === 'enterprise-deployment' && (() => {
+              const c = theme === 'dark'
+                ? { collect: '#4C8DFF', process: '#FEC514', store: '#48EFCF', serve: '#F04E98', ops: '#8A9BB4' }
+                : { collect: '#0B64DD', process: '#B7791F', store: '#0E8C7F', serve: '#F04E98', ops: '#64748B' }
+              const items = [
+                ['Collect', c.collect, false],
+                ['Transform', c.process, false],
+                ['Index & store', c.store, false],
+                ['Serve & act', c.serve, false],
+                ['Operations', c.ops, true],
+              ]
+              return (
+                <div
+                  className={`h-10 px-4 rounded-full flex items-center gap-3.5 text-xs font-medium ${
+                    theme === 'dark'
+                      ? 'bg-white/10 text-white/70 border border-white/15'
+                      : 'bg-white text-elastic-dev-blue/70 border border-elastic-dev-blue/10'
+                  }`}
+                >
+                  {items.map(([label, col, dashed]) => (
+                    <span key={label} className="flex items-center gap-1.5 whitespace-nowrap">
+                      <i
+                        className="inline-block w-4 h-[3px] rounded-sm"
+                        style={dashed
+                          ? { backgroundImage: `repeating-linear-gradient(90deg, ${col} 0 4px, transparent 4px 8px)` }
+                          : { background: col }}
+                      />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Reveal button - only visible on Data Explosion scene */}
+            {currentBaseId === 'data-explosion' && (
+              <button
+                onClick={() => setDataExplosionVerdictSignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Reveal verdict"
+              >
+                <FontAwesomeIcon icon={faPlay} className="text-sm ml-0.5" />
+              </button>
+            )}
+
+            {/* Play Button - only visible on Security scene, triggers current stage animation */}
+            {currentBaseId === 'security' && (
+              <button
+                onClick={() => setSecurityPlaySignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Play animation"
+              >
+                <FontAwesomeIcon icon={faPlay} className="text-sm ml-0.5" />
+              </button>
+            )}
+
+            {/* Phase Advance Button - appears when correlation is running; advances to attack story cards */}
+            {currentBaseId === 'security' && (securityAlertPhase === 'flooding' || securityAlertPhase === 'connecting') && (
+              <button
+                onClick={() => setSecurityPhaseSignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal border border-elastic-teal/30 glow-delayed-dark'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue border border-elastic-blue/20 glow-delayed-light'
+                }`}
+                title="Show attack story cards"
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+              </button>
+            )}
+
+            {/* Play Button - only visible on Data Mesh scene stage 0 before typing starts */}
+            {currentBaseId === 'data-mesh' && dataMeshPlayState.canPlay && (
+              <button
+                onClick={() => setDataMeshPlaySignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Play typing animation"
+              >
+                <FontAwesomeIcon icon={faPlay} className="text-sm ml-0.5" />
+              </button>
+            )}
+
+            {/* Run Query Button - only visible on Data Mesh scene when stage 4 and mesh is active */}
+            {currentBaseId === 'data-mesh' && dataMeshQueryState.canRun && (
+              <button
+                onClick={() => setDataMeshRunQuerySignal(n => n + 1)}
+                disabled={dataMeshQueryState.isRunning}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title={dataMeshQueryState.isRunning ? 'Running Query…' : 'Run Query'}
+              >
+                <FontAwesomeIcon
+                  icon={dataMeshQueryState.isRunning ? faBolt : faPlay}
+                  className={`text-sm ml-0.5 ${dataMeshQueryState.isRunning ? 'animate-pulse' : ''}`}
+                />
+              </button>
+            )}
+
+            {/* Activate Mesh Button - Data Mesh stage 4 before mesh is active */}
+            {currentBaseId === 'data-mesh' && dataMeshActivateMeshState.canActivate && (
+              <button
+                onClick={() => setDataMeshActivateMeshSignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Activate Mesh"
+              >
+                <FontAwesomeIcon icon={faCircleNodes} className="text-sm" />
+              </button>
+            )}
+
+            {/* Compare All Button - Data Mesh stage 3 */}
+            {currentBaseId === 'data-mesh' && dataMeshSummaryState.canToggle && (
+              <button
+                onClick={() => setDataMeshSummarySignal(n => n + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title={dataMeshSummaryState.isShowing ? 'Back to Cards' : 'Compare All'}
+              >
+                <FontAwesomeIcon icon={dataMeshSummaryState.isShowing ? faTimes : faLayerGroup} className="text-sm" />
+              </button>
+            )}
+
+            {/* Start/Pause + Reset - Data Tiering scene */}
+            {currentBaseId === 'data-tiering' && (
+              <>
+                <button
+                  onClick={() => setDataTieringIsRunning(r => !r)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title={dataTieringIsRunning ? 'Pause' : 'Start Flow'}
+                >
+                  <FontAwesomeIcon icon={dataTieringIsRunning ? faPause : faPlay} className="text-sm ml-0.5" />
+                </button>
+                <button
+                  onClick={() => { setDataTieringIsRunning(false); setDataTieringResetSignal(n => n + 1) }}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title="Reset"
+                >
+                  <FontAwesomeIcon icon={faRotateRight} className="text-sm" />
+                </button>
+              </>
+            )}
+
+            {/* How Button - only visible on Business Value scene when card is selected and unified message not shown */}
+            {currentBaseId === 'business-value' && businessValueSelectedCard && !businessValueShowUnified && (
+              <button
+                onClick={() => setBusinessValueShowUnified(true)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 ${
+                  theme === 'dark' 
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal glow-once-dark' 
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue glow-once-light'
+                }`}
+                title="Show unified platform message"
+              >
+                <FontAwesomeIcon icon={faForwardStep} className="text-lg" />
+              </button>
+            )}
+
+            {/* Stage Back/Forward - only visible on ES|QL scene */}
+            {currentBaseId === 'esql' && (
+              <>
+                <button
+                  onClick={() => setEsqlStage(s => Math.max(0, s - 1))}
+                  disabled={esqlStage === 0}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title="Previous stage"
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="text-sm" />
+                </button>
+                <button
+                  onClick={() => setEsqlStage(s => Math.min(ESQL_STAGE_COUNT - 1, s + 1))}
+                  disabled={esqlStage === ESQL_STAGE_COUNT - 1}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title="Next stage"
+                >
+                  <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+                </button>
+              </>
+            )}
+
+            {/* Stage Back/Forward - only visible on Elastic Overview scene */}
+            {currentBaseId === 'elastic-overview' && (
+              <>
+                <button
+                  onClick={() => setElasticOverviewStage(s => Math.max(0, s - 1))}
+                  disabled={elasticOverviewStage === 0}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title="Previous stage"
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="text-sm" />
+                </button>
+                <button
+                  onClick={() => setElasticOverviewStage(s => Math.min(ELASTIC_OVERVIEW_STAGE_COUNT - 1, s + 1))}
+                  disabled={elasticOverviewStage === ELASTIC_OVERVIEW_STAGE_COUNT - 1}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                    theme === 'dark'
+                      ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                      : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                  }`}
+                  title="Next stage"
+                >
+                  <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+                </button>
+              </>
+            )}
+          {/* Demo controls — Zero Downtime stage */}
+          {currentBaseId === 'services' && servicesStage === 2 && (
+            <>
+              <button
+                onClick={handleDemoBack}
+                disabled={demoPhase === 'idle'}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Previous step"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} className="text-sm" />
+              </button>
+              <button
+                onClick={() => setDemoPhase('idle')}
+                disabled={demoPhase === 'idle'}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                  theme === 'dark'
+                    ? 'bg-white/10 hover:bg-white/20 text-white/60'
+                    : 'bg-elastic-dev-blue/10 hover:bg-elastic-dev-blue/20 text-elastic-dev-blue/60'
+                }`}
+                title="Reset demo"
+              >
+                <FontAwesomeIcon icon={faRotateRight} className="text-sm" />
+              </button>
+              <button
+                onClick={handleDemoAdvance}
+                disabled={demoPhase === 'complete'}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed ${
+                  theme === 'dark'
+                    ? 'bg-elastic-teal/20 hover:bg-elastic-teal/30 text-elastic-teal'
+                    : 'bg-elastic-blue/10 hover:bg-elastic-blue/20 text-elastic-blue'
+                }`}
+                title="Next step"
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+              </button>
+            </>
+          )}
+          </div>
+          
+          {/* Right: Navigation Controls */}
+          <div className="flex items-center gap-2">
+            {/* Prev */}
+            <button
+              onClick={handlePrev}
+              disabled={currentScene === 0}
+              aria-label="Previous scene"
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                currentScene === 0
+                  ? 'opacity-30 cursor-not-allowed border-transparent'
+                  : theme === 'dark'
+                    ? 'bg-white/[0.06] border-white/15 text-white/80 hover:text-white hover:bg-white/15 hover:scale-110'
+                    : 'bg-white border-elastic-dev-blue/15 text-elastic-ink/80 hover:text-elastic-dark-ink hover:border-elastic-blue/40 hover:scale-110'
+              }`}
+            >
+              <FontAwesomeIcon icon={faChevronLeft} className="text-sm" />
+            </button>
+
+            {/* Current scene readout + jump-to menu */}
+            <div className="relative">
+              <button
+                onClick={() => setSceneMenuOpen((o) => !o)}
+                className={`group flex items-center gap-2.5 pl-3.5 pr-3 py-2 rounded-full border shadow-sm transition-all ${
+                  theme === 'dark'
+                    ? 'bg-white/[0.08] border-white/20 hover:border-elastic-teal/50'
+                    : 'bg-white border-elastic-dev-blue/20 hover:border-elastic-blue/40 hover:shadow'
+                }`}
+                title="Jump to scene"
+              >
+                <span className={`text-sm font-semibold leading-none ${theme === 'dark' ? 'text-white' : 'text-elastic-dark-ink'}`}>
+                  {sceneTitle(scenes[currentScene] || {})}
+                </span>
+                <span className={`text-xs font-mono leading-none tabular-nums ${theme === 'dark' ? 'text-elastic-teal' : 'text-elastic-blue'}`}>
+                  {currentScene + 1} / {scenes.length}
+                </span>
+                <FontAwesomeIcon
+                  icon={faChevronRight}
+                  className={`text-[10px] transition-transform duration-200 ${sceneMenuOpen ? '-rotate-90' : 'rotate-0'} ${theme === 'dark' ? 'text-white/40' : 'text-elastic-dev-blue/40'}`}
+                />
+              </button>
+
+              {sceneMenuOpen && (
+                <>
+                  {/* Click-away backdrop */}
+                  <button
+                    className="fixed inset-0 z-40 cursor-default"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setSceneMenuOpen(false)}
+                  />
+                  <div
+                    className={`absolute bottom-full right-0 mb-3 z-50 w-72 rounded-2xl border shadow-2xl overflow-hidden ${
+                      theme === 'dark' ? 'bg-elastic-dev-blue border-white/10' : 'bg-white border-elastic-dev-blue/10'
+                    }`}
+                  >
+                    {/* Search */}
+                    <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${theme === 'dark' ? 'border-white/10' : 'border-elastic-dev-blue/10'}`}>
+                      <FontAwesomeIcon icon={faMagnifyingGlass} className={`text-xs ${theme === 'dark' ? 'text-white/40' : 'text-elastic-dev-blue/40'}`} />
+                      <input
+                        autoFocus
+                        value={sceneQuery}
+                        onChange={(e) => setSceneQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Escape') setSceneMenuOpen(false) }}
+                        placeholder="Jump to scene…"
+                        className={`flex-1 bg-transparent text-sm outline-none ${theme === 'dark' ? 'text-white placeholder:text-white/30' : 'text-elastic-dark-ink placeholder:text-elastic-dev-blue/30'}`}
+                      />
+                    </div>
+
+                    {/* Scene list */}
+                    <div className="max-h-72 overflow-y-auto py-1">
+                      {scenes
+                        .map((scene, index) => ({ scene, index, title: sceneTitle(scene) }))
+                        .filter(({ title }) => title.toLowerCase().includes(sceneQuery.trim().toLowerCase()))
+                        .map(({ scene, index, title }) => {
+                          const isActive = index === currentScene
+                          return (
+                            <button
+                              key={scene.id}
+                              onClick={() => { navigateToScene(index); setSceneMenuOpen(false) }}
+                              className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                                isActive
+                                  ? theme === 'dark' ? 'bg-elastic-teal/15' : 'bg-elastic-blue/10'
+                                  : theme === 'dark' ? 'hover:bg-white/[0.06]' : 'hover:bg-elastic-dev-blue/[0.05]'
+                              }`}
+                            >
+                              <span className={`w-6 text-right text-xs font-mono tabular-nums shrink-0 ${theme === 'dark' ? 'text-white/40' : 'text-elastic-dev-blue/40'}`}>
+                                {index + 1}
+                              </span>
+                              <span className={`flex-1 min-w-0 truncate text-sm ${
+                                isActive
+                                  ? `font-semibold ${theme === 'dark' ? 'text-elastic-teal' : 'text-elastic-blue'}`
+                                  : theme === 'dark' ? 'text-white/80' : 'text-elastic-dark-ink/80'
+                              }`}>
+                                {title}
+                              </span>
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Next */}
+            <button
+              onClick={handleNext}
+              disabled={currentScene === scenes.length - 1}
+              aria-label="Next scene"
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                currentScene === scenes.length - 1
+                  ? 'opacity-30 cursor-not-allowed border-transparent'
+                  : theme === 'dark'
+                    ? 'bg-white/[0.06] border-white/15 text-white/80 hover:text-white hover:bg-white/15 hover:scale-110'
+                    : 'bg-white border-elastic-dev-blue/15 text-elastic-ink/80 hover:text-elastic-dark-ink hover:border-elastic-blue/40 hover:scale-110'
+              }`}
+            >
+              <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+            </button>
+          </div>
+        </div>
+      </nav>
+      
+      {/* Progress Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 h-1 bg-gray-200 dark:bg-gray-700">
+        <div 
+          className="h-full bg-elastic-blue dark:bg-elastic-teal transition-all duration-500"
+          style={{ width: `${((currentScene + 1) / scenes.length) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Loaded on demand so its print stylesheet only applies on the print route.
+const PrintPage = lazy(() => import('./print/PrintPage'))
+
+function App() {
+  const location = useLocation()
+  const isPresenterView = location.pathname === '/presenter'
+  const isPrintView = location.pathname === '/print'
+
+  return (
+    <ThemeProvider>
+      <TeamProvider>
+        <SceneMotionProvider>
+          {isPrintView ? (
+            <Suspense fallback={null}><PrintPage /></Suspense>
+          ) : isPresenterView ? <PresenterView /> : <AppContent />}
+        </SceneMotionProvider>
+        <Analytics />
+      </TeamProvider>
+    </ThemeProvider>
+  )
+}
+
+export default App

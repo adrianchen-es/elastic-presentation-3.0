@@ -1,0 +1,401 @@
+/* Space Mono - Google Fonts import must come first */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+/* Inter Variable Font - Single file supports all weights (100-900) */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype');
+}
+
+/* Inter Variable Font - Italic */
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype');
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+@keyframes glowOnce {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(11, 100, 221, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(11, 100, 221, 0.6), 0 0 40px rgba(11, 100, 221, 0.4);
+  }
+}
+
+@keyframes glowOnceDark {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(72, 239, 207, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(72, 239, 207, 0.6), 0 0 40px rgba(72, 239, 207, 0.4);
+  }
+}
+
+.glow-once-light {
+  animation: glowOnce 1.5s ease-in-out 0.3s 1;
+}
+
+.glow-once-dark {
+  animation: glowOnceDark 1.5s ease-in-out 0.3s 1;
+}
+
+.glow-delayed-light {
+  animation: glowOnce 1.5s ease-in-out 3s 1;
+}
+
+.glow-delayed-dark {
+  animation: glowOnceDark 1.5s ease-in-out 3s 1;
+}
+
+/* ── Scene "live" motion loops (Observability system model, live dots) ────── */
+/* Colors are set inline per element; these only drive opacity/scale so they
+   stay theme- and status-color agnostic. */
+@keyframes motionBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.motion-blink {
+  animation: motionBlink 1.4s ease-in-out infinite;
+}
+
+@keyframes motionPulseRing {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.02); }
+}
+
+/* Chat/message entrance — a newly streamed message fades and rises into place. */
+@keyframes motionMsgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.motion-msg-in {
+  animation: motionMsgIn 0.34s ease-out both;
+}
+
+/* An absolutely-positioned bordered overlay (color set inline) that pulses to
+   flag critical / focus nodes without touching the node's own layout. */
+.motion-pulse-ring {
+  animation: motionPulseRing 2s ease-in-out infinite;
+}
+
+/* Live time-series charts — the plotted lines scroll left to mimic streaming
+   metrics. The chart draws two identical halves so a -50% shift loops seamlessly. */
+@keyframes motionChartScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.motion-chart-scroll {
+  animation: motionChartScroll 9s linear infinite;
+}
+
+/* Soft glow on the cluster boundary for the opening architecture step.
+   Colour comes from the inline --arch-pulse custom property so it can stay
+   theme-aware. */
+@keyframes archBoundaryPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+  50% { box-shadow: 0 0 34px var(--arch-pulse, rgba(255, 255, 255, 0.12)); }
+}
+
+.arch-boundary-pulse {
+  animation: archBoundaryPulse 2.2s ease-in-out infinite;
+}
+
+/* Flowing energy along the platform conduits/traces (Slide 6 concepts). */
+@keyframes secFlowOut { to { stroke-dashoffset: -32; } }
+@keyframes secFlowIn { to { stroke-dashoffset: 32; } }
+.sec-flow-out { animation: secFlowOut 0.9s linear infinite; }
+.sec-flow-in { animation: secFlowIn 0.9s linear infinite; }
+
+/* Search catalog — living inverted-index stage */
+@keyframes catalogFlow {
+  to { stroke-dashoffset: -28; }
+}
+@keyframes catalogPulse {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes catalogBeacon {
+  0% { box-shadow: 0 0 0 0 var(--catalog-accent-glow, rgba(72, 239, 207, 0.45)); }
+  70% { box-shadow: 0 0 0 18px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes catalogFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.catalog-flow { animation: catalogFlow 1.1s linear infinite; }
+.catalog-pulse { animation: catalogPulse 1.6s ease-in-out infinite; }
+.catalog-beacon { animation: catalogBeacon 1.4s ease-out infinite; }
+.catalog-float { animation: catalogFloat 3s ease-in-out infinite; }
+.catalog-chip-fall {
+  animation: catalogChipFall 1.35s cubic-bezier(.22,.8,.24,1) infinite;
+}
+.catalog-brick-scan {
+  animation: catalogBrickScan 1.5s ease-in-out infinite;
+}
+.catalog-query-drop {
+  animation: catalogQueryDrop 0.6s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-hit-pop {
+  animation: catalogHitPop 0.45s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-hit-land {
+  animation: catalogHitLand 0.55s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-replica-in {
+  animation: catalogReplicaIn 0.5s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-node-die {
+  animation: catalogNodeDie 0.55s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-promote {
+  animation: catalogPromote 0.6s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-node-join {
+  animation: catalogNodeJoin 0.55s cubic-bezier(.22,.8,.24,1) both;
+}
+.catalog-shard-in {
+  animation: catalogShardIn 0.55s cubic-bezier(.22,.8,.24,1) both;
+}
+
+@keyframes catalogChipFall {
+  0% { transform: translateY(-6px); opacity: 0; }
+  18% { opacity: 0.95; }
+  100% { transform: translateY(54px); opacity: 0; }
+}
+
+@keyframes catalogBrickScan {
+  0%, 100% { filter: brightness(0.55); opacity: 0.4; }
+  35%, 50% { filter: brightness(1.45); opacity: 1; }
+}
+
+@keyframes catalogQueryDrop {
+  from { transform: translateY(-28px) scale(0.85); opacity: 0; }
+  55% { opacity: 1; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes catalogHitPop {
+  from { transform: translateY(10px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes catalogHitLand {
+  from { transform: translateY(-18px) scale(0.92); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes catalogReplicaIn {
+  from { transform: translateY(12px) scale(0.92); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes catalogNodeDie {
+  0% { transform: scale(1); filter: grayscale(0) brightness(1); }
+  35% { transform: scale(1.02) rotate(-0.6deg); }
+  100% { transform: scale(0.98); filter: grayscale(0.75) brightness(0.72); }
+}
+
+@keyframes catalogPromote {
+  from { transform: translateY(8px) scale(0.94); box-shadow: 0 0 0 0 transparent; }
+  55% { transform: translateY(-2px) scale(1.03); }
+  to { transform: translateY(0) scale(1); }
+}
+
+@keyframes catalogNodeJoin {
+  from { transform: translateY(18px) scale(0.94); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes catalogShardIn {
+  from { transform: translateX(-22px) scale(0.94); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes gpuSegFlow {
+  0% { left: 0%; opacity: 0; transform: scale(0.85); }
+  12% { opacity: 1; transform: scale(1); }
+  86% { left: calc(100% - 48px); opacity: 1; transform: scale(1); }
+  100% { left: calc(100% - 48px); opacity: 0; transform: scale(0.9); }
+}
+@keyframes gpuSpoutRide {
+  from { left: 0%; top: var(--rail-y0); }
+  to { left: 100%; top: var(--rail-y1); }
+}
+@keyframes gpuSpoutFade {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.28); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  88% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+}
+@keyframes gpuSegStall {
+  0% { left: 0%; opacity: 0; transform: scale(0.85); }
+  10% { opacity: 1; transform: scale(1); }
+  28% { left: 62%; }
+  78% { left: 70%; opacity: 1; }
+  94% { left: calc(100% - 48px); opacity: 1; }
+  100% { left: calc(100% - 48px); opacity: 0; }
+}
+.gpu-token-seg {
+  animation: gpuSegFlow 2.4s linear infinite;
+}
+.gpu-token-fast {
+  animation: gpuSegFlow 1.35s linear infinite;
+}
+.gpu-token-stall {
+  animation: gpuSegStall 5.2s linear infinite;
+}
+.gpu-token-drip {
+  animation: gpuSegFlow 2.8s linear infinite;
+}
+.gpu-token-spout {
+  animation: gpuSpoutRide 1.2s linear infinite, gpuSpoutFade 1.2s linear infinite;
+}
+@keyframes gpuChokePulse {
+  0%, 100% { transform: translateY(-50%) scaleX(1); opacity: 0.85; }
+  50% { transform: translateY(-50%) scaleX(0.55); opacity: 1; }
+}
+.gpu-choke {
+  animation: gpuChokePulse 1.4s ease-in-out infinite;
+}
+@keyframes infHubPulse {
+  0%, 100% { box-shadow: 0 0 18px var(--inf-accent, #0B64DD)22; }
+  50% { box-shadow: 0 0 36px var(--inf-accent, #0B64DD)55; }
+}
+.inf-hub {
+  animation: infHubPulse 2.4s ease-in-out infinite;
+}
+.inf-chip {
+  opacity: 0;
+}
+@keyframes infOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.inf-ring-spin {
+  animation: infOrbit 48s linear infinite;
+}
+.inf-chip-live {
+  z-index: 20;
+}
+.inf-sov-chip,
+.inf-sov-well {
+  opacity: 0;
+}
+@keyframes ctxGapPulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+.ctx-gap {
+  animation: ctxGapPulse 2.2s ease-in-out infinite;
+}
+@keyframes ctxTokenUp {
+  0% { top: 100%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 0%; opacity: 0; }
+}
+@keyframes ctxTokenLeak {
+  0% { top: 100%; left: 50%; opacity: 0; }
+  14% { opacity: 1; }
+  40% { left: 38%; }
+  68% { left: 62%; opacity: 0.75; }
+  100% { top: 0%; left: 50%; opacity: 0; }
+}
+.ctx-token-up,
+.ctx-token-leak {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ctx-token-up {
+  animation: ctxTokenUp 1.8s linear infinite;
+}
+.ctx-token-leak {
+  animation: ctxTokenLeak 2.4s linear infinite;
+}
+.ctx-chip,
+.ctx-flow-chip,
+.ctx-flow-hub {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-blink,
+  .motion-pulse-ring,
+  .motion-msg-in,
+  .motion-chart-scroll,
+  .arch-boundary-pulse,
+  .sec-flow-out,
+  .sec-flow-in,
+  .catalog-flow,
+  .catalog-pulse,
+  .catalog-beacon,
+  .catalog-float,
+  .catalog-chip-fall,
+  .catalog-brick-scan,
+  .catalog-query-drop,
+  .catalog-hit-pop,
+  .catalog-hit-land,
+  .catalog-replica-in,
+  .catalog-node-die,
+  .catalog-promote,
+  .catalog-node-join,
+  .catalog-shard-in,
+  .diskbbq-flow,
+  .gpu-token-seg,
+  .gpu-token-fast,
+  .gpu-token-stall,
+  .gpu-token-drip,
+  .gpu-token-spout,
+  .gpu-choke,
+  .inf-hub,
+  .inf-ring-spin,
+  .ctx-gap,
+  .ctx-token-up,
+  .ctx-token-leak {
+    animation: none;
+  }
+  .inf-chip,
+  .inf-sov-chip,
+  .inf-sov-well,
+  .ctx-chip,
+  .ctx-flow-chip,
+  .ctx-flow-hub {
+    opacity: 1;
+  }
+}
