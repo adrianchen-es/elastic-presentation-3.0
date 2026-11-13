@@ -45,8 +45,8 @@ const EXPECT_TEXT = {
   'elastic-value': 'repository_integrity',
   'data-tiering': 'Hot',
   'enterprise-deployment': 'Enterprise Deployment',
-  'value-by-team~2': '1 Shard strategy',
-  'value-by-team~3': '6 Ingest backpressure',
+  'value-by-team~2': 'Shard strategy',
+  'value-by-team~3': 'Ingest backpressure',
 }
 
 afterEach(() => cleanup())
