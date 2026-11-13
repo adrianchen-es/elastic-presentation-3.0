@@ -2,6 +2,8 @@
 // this order; every other scene is moved after them and disabled. Per-scene
 // durations and content edits are preserved when switching presets.
 
+import { CLUSTER_OPS_PRESET } from './clusterOpsWorkshopPreset'
+
 export const DECK_PRESETS = [
   {
     id: 'no-scenes',
@@ -67,6 +69,7 @@ export const DECK_PRESETS = [
       'next-steps',
     ],
   },
+  CLUSTER_OPS_PRESET,
   {
     id: 'whiteboard-session',
     label: 'Whiteboard',
@@ -184,4 +187,15 @@ export function presetConfig(presetId, allSceneIds) {
   const enabledIds = preset.sceneIds.filter((id) => allSceneIds.includes(id))
   const remaining = allSceneIds.filter((id) => !enabledIds.includes(id))
   return { order: [...enabledIds, ...remaining], enabledIds }
+}
+
+// Optional content a preset ships with: per-scene durations and metadata (slide
+// text, speaker notes). Applied over the user's values for exactly the scenes the
+// preset names, so choosing the preset gives the whole deck; other scenes are untouched.
+export function presetSeed(presetId) {
+  const preset = getPreset(presetId)
+  return {
+    durations: { ...(preset?.durations || {}) },
+    sceneMetadata: { ...(preset?.sceneMetadata || {}) },
+  }
 }

@@ -8,7 +8,7 @@ import {
   faDownload, faUpload, faArrowUp, faArrowDown,
   faLayerGroup
 } from '@fortawesome/free-solid-svg-icons'
-import { DECK_PRESETS, DEFAULT_PRESET_ID, CUSTOM_PRESET_ID, presetConfig } from '../data/deckPresets'
+import { DECK_PRESETS, DEFAULT_PRESET_ID, CUSTOM_PRESET_ID, presetConfig, presetSeed } from '../data/deckPresets'
 import { catalogSpeakerNotes, resolveCatalogScenario } from '../data/catalogScenarios'
 
 import DeckBuilder from './DeckBuilder'
@@ -94,11 +94,20 @@ export function useSceneConfiguration(initialScenes) {
       const allIds = materializeScenes(initialScenes, prev.duplicates || []).map((s) => s.id)
       const preset = presetConfig(presetId, allIds)
       if (!preset) return prev
+      // A preset that ships content (slide text, notes, timings) replaces those
+      // values for the scenes it names. Presets without content change nothing here.
+      const seed = presetSeed(presetId)
+      const sceneMetadata = { ...(prev.sceneMetadata || {}) }
+      for (const [id, meta] of Object.entries(seed.sceneMetadata)) {
+        sceneMetadata[id] = { ...(sceneMetadata[id] || {}), ...meta }
+      }
       return {
         ...prev,
         order: preset.order,
         enabledIds: preset.enabledIds,
         activePreset: presetId,
+        durations: { ...(prev.durations || {}), ...seed.durations },
+        sceneMetadata,
       }
     })
   }

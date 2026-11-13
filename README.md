@@ -8,7 +8,7 @@ polished animated scenes — all running locally in the browser with no backend.
 
 - Single-page React 18 + Vite app, hash-routed (`/#/<scene-id>`), no server or database.
 - A presentation is an ordered, enabled subset of **60 registered scenes** (`src/data/sceneRegistry.jsx`).
-- **Deck presets** (`src/data/deckPresets.js`) are out-of-the-box flows: New Prospect (default), Technical Deep-Dive, Whiteboard, Observability, Security, Search, All Scenes, No Scenes.
+- **Deck presets** (`src/data/deckPresets.js`) are out-of-the-box flows: New Prospect (default), Technical Deep-Dive, Whiteboard, Workshop: Cluster Operations, Observability, Security, Search, All Scenes, No Scenes.
 - Scenes can have internal animation steps ("**beats**" via the `useSceneMotion` hook, or lifted "**stages**" managed in `App.jsx`).
 - A **presenter view** (`/#/presenter`) opens in a second tab and drives the audience tab over `BroadcastChannel`, with speaker notes and live previews.
 - An **architecture whiteboard** scene (`/#/whiteboard`) provides a live drag-and-drop canvas for Elastic deployment diagrams.
@@ -94,11 +94,17 @@ content edits are preserved when switching presets. The default preset is
 | **New Prospect** *(default)* | `new-prospect` | Net-new pitch — market context first, no existing-footprint assumptions. 16 scenes ending in pricing, services, and next steps. |
 | **Technical Deep-Dive** | `technical` | Architecture and platform internals for architects and platform teams — planes, node types, tiering, schema, cross-cluster, ES\|QL, deployment models, through a full reference deployment. |
 | **Whiteboard** | `whiteboard-session` | A live working session — platform grounding and the reference architecture, then draw theirs on the live board. |
+| **Workshop: Cluster Operations** | `cluster-ops-workshop` | 30 minute cluster operations and administration workshop. A short data operations recap, eight problem areas by symptom, then four live Kibana demo stops. Content lives in `src/data/clusterOpsWorkshopPreset.js`. |
 | **Observability** | `observability` | The Observability story — from efficient datastore to the autonomous AI SRE (Nightshift). Uses the 14 `obs-*` / `nightshift-*` scenes. |
 | **Security** | `security` | Modern threat landscape → AI-driven SecOps → tool consolidation, governance, and commercials. |
 | **Search** | `search` | The Search story — lexical foundations → vector scale → GPU → inference → context layer, then AI and ES\|QL. |
 | **All Scenes** | `all-scenes` | Everything enabled in registration order — the full library. Newly added scenes are always included. |
 | **No Scenes** | `no-scenes` | Blank slate — only Hero. Build a custom flow from scratch. |
+
+Most presets only choose scenes. A preset can also ship content: `durations` and
+`sceneMetadata` (slide text and speaker notes) in the preset object. Applying it
+replaces those values for the scenes it names and leaves every other scene alone.
+`cluster-ops-workshop` does this. Reapply the preset to reset its slides.
 
 ---
 
