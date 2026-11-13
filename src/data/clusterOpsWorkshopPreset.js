@@ -1,12 +1,16 @@
 // Workshop: cluster operations and administration. 30 minutes, demo heavy.
 //
-//   Tell 1 (about 10 min): hero, agenda, the four data operations (kept brief),
-//                          then the eight areas by symptom.
-//   Show   (about 16 min): live in Kibana. Health first, then four stops, two topics per stop.
+//   Tell 1 (about 11 min): hero, agenda, the four data operations (kept brief),
+//                          the node roles that do the work, then the eight areas by symptom.
+//   Show   (about 15 min): live in Kibana. Health first, then four stops, two topics per stop.
 //   Tell 2 (about 4 min):  the operating habits to take away.
-//   Appendix (not timed):  the health APIs in detail, then a symptom, cause and call
-//                          reference for all eight topics. Skipped in the room, used for questions
-//                          and the handout.
+//   Appendix (not timed):  the health APIs, topics 1 to 4 reference, the data tiering visual,
+//                          topics 5 to 8 reference, then the reference architecture with its
+//                          monitoring cluster. Skipped in the room, used for questions and the handout.
+//
+// Scene formats are mixed on purpose: cards (data operations), the node role diagram,
+// tabs (areas), the demo grid, then reference grids broken up by the data tiering
+// animation and the architecture diagram. All are existing scenes.
 //
 // The data operations slide condenses the "Data Operations" request lifecycle deck
 // (index, delete, update, search). The demo stops cover the eight topics:
@@ -22,11 +26,12 @@ export const CLUSTER_OPS_PRESET = {
   id: 'cluster-ops-workshop',
   label: 'Workshop: Cluster Operations',
   description:
-    'A 30 minute cluster operations and administration workshop. A short look at how the four data operations use resources, the eight areas where clusters hurt, then live Kibana demos starting with the health APIs. Appendix covers the health APIs and a reference for all eight topics.',
+    'A 30 minute cluster operations and administration workshop. A short look at how the four data operations use resources and which node roles do the work, the eight areas where clusters hurt, then live Kibana demos starting with the health APIs. The appendix has the health APIs, a reference for all eight topics, data tiering and the reference architecture.',
   sceneIds: [
     'hero',
     'agenda',
     'business-value',
+    'node-types',
     'problem-patterns',
     'value-by-team',
     'platform-value',
@@ -34,7 +39,9 @@ export const CLUSTER_OPS_PRESET = {
     // demo layout, created when the preset is applied (see `duplicates` below).
     'elastic-value',
     'value-by-team~2',
+    'data-tiering',
     'value-by-team~3',
+    'enterprise-deployment',
   ],
   duplicates: [
     { id: 'value-by-team~2', sourceId: 'value-by-team', label: 'Appendix B: Reference, topics 1 to 4' },
@@ -43,13 +50,16 @@ export const CLUSTER_OPS_PRESET = {
   durations: {
     hero: '1 min',
     agenda: '1 min',
-    'business-value': '4 min',
-    'problem-patterns': '4 min',
-    'value-by-team': '16 min',
+    'business-value': '3 min',
+    'node-types': '3 min',
+    'problem-patterns': '3 min',
+    'value-by-team': '15 min',
     'platform-value': '4 min',
     'elastic-value': '0 min',
     'value-by-team~2': '0 min',
+    'data-tiering': '0 min',
     'value-by-team~3': '0 min',
+    'enterprise-deployment': '0 min',
   },
   sceneMetadata: {
     hero: {
@@ -61,15 +71,15 @@ export const CLUSTER_OPS_PRESET = {
       speakerNotes: [
         'TELL, 1 min.',
         'Frame: most cluster incidents trace back to a small set of causes. Each one has a symptom, a cause and a diagnostic.',
-        'This is a working session. About 16 of the 30 minutes are live in Kibana, so ask questions as we go.',
+        'This is a working session. About 15 of the 30 minutes are live in Kibana, so ask questions as we go.',
       ].join('\n'),
     },
     agenda: {
       eyebrow: 'What we will cover',
       subtitle: '30 minutes, with the demos live in Kibana',
       items: [
-        { time: '8 min', title: 'How data operations use resources, and the eight areas where clusters hurt', sceneIds: [] },
-        { time: '16 min', title: 'Live demo: cluster health first, then four stops through the diagnostics', sceneIds: [] },
+        { time: '9 min', title: 'How data operations use resources, which nodes do the work, and the eight areas where clusters hurt', sceneIds: [] },
+        { time: '15 min', title: 'Live demo: cluster health first, then four stops through the diagnostics', sceneIds: [] },
         { time: '4 min', title: 'Operating habits to take away', sceneIds: [] },
       ],
       speakerNotes: [
@@ -115,12 +125,35 @@ export const CLUSTER_OPS_PRESET = {
       ],
       summaryText: 'More shards means more work per operation. That is where the next slide starts.',
       speakerNotes: [
-        'TELL, 4 min. Keep this to the four verbs. Do not walk the full request diagrams.',
+        'TELL, 3 min. Keep this to the four verbs. Do not walk the full request diagrams.',
         'Index: coordinating node routes to the primary, which replicates. The request returns when every in-sync copy commits. One slow shard slows the whole bulk.',
         'Delete: tombstone only. Disk does not shrink until a merge. Worth knowing before someone deletes by query to free space.',
         'Update: delete plus index. Heavy updates cost like heavy indexing.',
         'Search: scatter to shards, gather and merge. Every extra shard adds work to every query.',
-        'Bridge: the eight areas that follow are all ways these four operations get expensive.',
+        'Bridge: next slide shows which node roles do this work.',
+      ].join('\n'),
+    },
+    'node-types': {
+      title: 'Node roles',
+      eyebrow: 'Where the work happens',
+      titlePlain: 'Node roles: ',
+      titleAccent: 'who does the work',
+      subtitle: 'Each data operation lands on a different role. The diagnostics later point at them.',
+      nodes: [
+        { description: 'Hold cluster state: mappings, settings, shard routing. Oversharding and mapping explosions slow them down. At scale, use three dedicated masters across zones.' },
+        { description: 'Hold shards and run indexing and search. Heap, disk and thread pools live here, so most diagnostics in this session point at these nodes.' },
+        { description: 'Run pipelines before indexing. Heavy processors compete with indexing for CPU, and are a common cause of 429s.' },
+        { description: 'Route requests, scatter to shards and merge results. Deep pagination and large aggregations cost memory here.' },
+        { description: 'Run anomaly detection and inference. Keep them off the data nodes so jobs do not steal resources from indexing and search.' },
+      ],
+      callout: 'Small clusters combine roles. At scale, separate them so one bad workload cannot take the cluster down.',
+      speakerNotes: [
+        'TELL, 3 min. Tie the four verbs to the node that does the work.',
+        'Index: the coordinating node routes to the primary shard on a data node, which replicates. If a pipeline is used, the ingest role runs it first.',
+        'Search: the coordinating node scatters to shards on data nodes, then gathers and merges.',
+        'Masters hold cluster state. Every shard and every mapped field adds to it, which is why oversharding and mapping explosions show up as slow cluster state updates.',
+        'Ask: do you run dedicated masters today? Roles can be combined on small clusters, but at scale separate them.',
+        'Bridge: the next slide lists where this goes wrong.',
       ].join('\n'),
     },
     'problem-patterns': {
@@ -161,7 +194,7 @@ export const CLUSTER_OPS_PRESET = {
         },
       ],
       speakerNotes: [
-        'TELL, 4 min. Click through the three tabs, about one minute each, and name the numbered topics.',
+        'TELL, 3 min. Click through the three tabs, about one minute each, and name the numbered topics.',
         'Shape and memory (topics 1 to 3): oversharding, heap and JVM, mapping explosion. These share a cause: too much cluster state and too many small things.',
         'Data and capacity (topics 4 to 6): lifecycle and tiering, disk watermarks, ingest backpressure. These are about headroom and flow.',
         'Query and resilience (topics 7 and 8): slow queries, and surviving a bad day.',
@@ -217,7 +250,7 @@ export const CLUSTER_OPS_PRESET = {
       impactDetail: 'Health first, then the diagnostic for the area it points at.',
       impactIcon: 'stopwatch',
       speakerNotes: [
-        'SHOW, about 16 min, about 3 min per stop. Leave this slide up for 20 seconds, then switch to Kibana. Lab data, say so once.',
+        'SHOW, about 15 min, about 3 min per stop. Leave this slide up for 20 seconds, then switch to Kibana. Lab data, say so once.',
         'Stop 0, health first. GET _cat/health?v for one line: status, node count, shards, unassigned, pending tasks. GET _cluster/health?level=indices to see which indices are red or yellow. Then GET _health_report: each indicator gives a status, the impact, the cause and a diagnosis. Say the rule: green all shards assigned, yellow a replica is missing, red a primary is missing. Start every investigation here and let it pick the next stop. Detail is in Appendix A.',
         'Stop 1, shards and memory. _cat/shards?v&s=store:desc and _cluster/stats for the shard count and size spread. _cluster/allocation/explain on an unassigned or hot shard. Then _nodes/stats/jvm,breaker for heap, GC and breaker trips. Show the same in Stack Monitoring. Point out heap past about 31 GB loses compressed oops.',
         'Stop 2, mappings and lifecycle. GET index/_mapping and count fields by index. Show index.mapping.total_fields.limit. Then Index Lifecycle Policies in Stack Management and _ilm/explain for an index stuck in an error step. Show data stream stats and which tier holds what.',
@@ -388,6 +421,24 @@ export const CLUSTER_OPS_PRESET = {
         'Ingest: raise bulk size to a few MB to tens of MB, lengthen refresh_interval, and move heavy work out of ingest pipelines before adding nodes.',
         'Query: enable the slow log with sensible thresholds before you need it.',
         'Resilience: three dedicated masters across zones at scale, shard allocation awareness, and a restore drill at least quarterly.',
+      ].join('\n'),
+    },
+    // Appendix visuals: existing scenes with their default content, plus speaker notes.
+    'data-tiering': {
+      title: 'Appendix: Data tiering',
+      speakerNotes: [
+        'APPENDIX, topic 4. Not in the timed run.',
+        'Use for lifecycle and cost questions. Hot, warm, cold and frozen differ in cost per GB and in how fast they answer.',
+        'Tie back to the demo: ILM moves data between tiers, and _ilm/explain shows where a stuck index is. Without rollover and a tier plan, storage cost grows linearly.',
+      ].join('\n'),
+    },
+    'enterprise-deployment': {
+      title: 'Appendix: Reference architecture',
+      speakerNotes: [
+        'APPENDIX, topics 5 to 8. Not in the timed run.',
+        'Use for resilience and capacity questions. Point at the tiered cluster, the dedicated master nodes and the separate monitoring cluster.',
+        'The monitoring cluster is why Stack Monitoring still works when production is unhealthy. Ask if they have one.',
+        'Zone awareness, dedicated masters and snapshot repositories on this diagram are the answers to topic 8.',
       ].join('\n'),
     },
   },

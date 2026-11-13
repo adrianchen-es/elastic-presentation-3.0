@@ -51,7 +51,7 @@ describe('deck presets', () => {
       for (const n of ['1', '2', '3', '4', '5', '6', '7', '8']) expect(tags).toMatch(new RegExp(`\\b${n}\\b`))
     })
 
-    it('ships appendix copies of real scenes, after the close and outside the 30 minutes', () => {
+    it('ships appendix slides, after the close and outside the 30 minutes', () => {
       const copies = presetDuplicates('cluster-ops-workshop')
       expect(copies.length).toBeGreaterThan(0)
       for (const d of copies) {
@@ -60,7 +60,7 @@ describe('deck presets', () => {
         expect(preset.sceneIds).toContain(d.id)
       }
       const close = preset.sceneIds.indexOf('platform-value')
-      const appendix = ['elastic-value', ...copies.map((d) => d.id)]
+      const appendix = ['elastic-value', 'data-tiering', 'enterprise-deployment', ...copies.map((d) => d.id)]
       for (const id of appendix) {
         expect(preset.sceneIds.indexOf(id)).toBeGreaterThan(close)
         expect(parseInt(seed.durations[id], 10)).toBe(0)

@@ -41,7 +41,10 @@ const EXPECT_TEXT = {
   'value-by-team': 'Health first',
   'business-value': 'Scatter and gather',
   'platform-value': 'Alert early',
+  'node-types': 'Hold cluster state',
   'elastic-value': 'repository_integrity',
+  'data-tiering': 'Hot',
+  'enterprise-deployment': 'Enterprise Deployment',
   'value-by-team~2': '1 Shard strategy',
   'value-by-team~3': '6 Ingest backpressure',
 }
