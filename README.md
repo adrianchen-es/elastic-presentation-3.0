@@ -94,7 +94,7 @@ content edits are preserved when switching presets. The default preset is
 | **New Prospect** *(default)* | `new-prospect` | Net-new pitch — market context first, no existing-footprint assumptions. 16 scenes ending in pricing, services, and next steps. |
 | **Technical Deep-Dive** | `technical` | Architecture and platform internals for architects and platform teams — planes, node types, tiering, schema, cross-cluster, ES\|QL, deployment models, through a full reference deployment. |
 | **Whiteboard** | `whiteboard-session` | A live working session — platform grounding and the reference architecture, then draw theirs on the live board. |
-| **Workshop: Cluster Operations** | `cluster-ops-workshop` | 30 minute cluster operations and administration workshop. A short data operations recap, eight problem areas by symptom, then four live Kibana demo stops. Content lives in `src/data/clusterOpsWorkshopPreset.js`. |
+| **Workshop: Cluster Operations** | `cluster-ops-workshop` | 30 minute cluster operations and administration workshop. A short data operations recap, eight problem areas by symptom, then live Kibana demos that start with the health APIs. Three untimed appendix slides follow the close: the health APIs, and a symptom, cause and call reference for all eight topics. Content lives in `src/data/clusterOpsWorkshopPreset.js`. |
 | **Observability** | `observability` | The Observability story — from efficient datastore to the autonomous AI SRE (Nightshift). Uses the 14 `obs-*` / `nightshift-*` scenes. |
 | **Security** | `security` | Modern threat landscape → AI-driven SecOps → tool consolidation, governance, and commercials. |
 | **Search** | `search` | The Search story — lexical foundations → vector scale → GPU → inference → context layer, then AI and ES\|QL. |
@@ -104,7 +104,7 @@ content edits are preserved when switching presets. The default preset is
 Most presets only choose scenes. A preset can also ship content: `durations` and
 `sceneMetadata` (slide text and speaker notes) in the preset object. Applying it
 replaces those values for the scenes it names and leaves every other scene alone.
-`cluster-ops-workshop` does this. Reapply the preset to reset its slides.
+`cluster-ops-workshop` does this. A preset can also ship `duplicates` (copies of a scene layout, such as `value-by-team~2`), which are added to the deck when it is applied. Reapply the preset to reset its slides.
 
 ---
 

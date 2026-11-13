@@ -111,6 +111,8 @@ function ValueByTeamScene({ metadata = {} }) {
   const cardBg = isDark ? 'bg-white/[0.04] border-white/10' : 'bg-white/90 border-elastic-dev-blue/10'
 
   const cardCols = balancedColumns(teams.length, 3)
+  // More than three cards wrap to a second row; tighten them so the impact bar keeps its height.
+  const dense = teams.length > 3
 
   return (
     <div className="flex flex-col h-full w-full px-8 py-6 overflow-hidden">
@@ -123,12 +125,12 @@ function ValueByTeamScene({ metadata = {} }) {
         />
 
         <div className="flex-1 min-h-0 flex flex-col gap-4">
-          <div className="grid gap-5" style={{ gridTemplateColumns: gridColumnsStyle(cardCols) }}>
+          <div className={`grid min-h-0 ${dense ? 'gap-3' : 'gap-5'}`} style={{ gridTemplateColumns: gridColumnsStyle(cardCols) }}>
             {teams.map((t, i) => (
-              <div key={i} className={`rounded-2xl border p-6 flex flex-col gap-4 ${cardBg}`}>
+              <div key={i} className={`rounded-2xl border flex flex-col ${dense ? 'p-3.5 gap-2.5' : 'p-6 gap-4'} ${cardBg}`}>
                 <div className="flex items-center gap-3.5">
                   <span
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
+                    className={`rounded-xl flex items-center justify-center shrink-0 ${dense ? 'w-10 h-10 text-lg' : 'w-12 h-12 text-xl'}`}
                     style={{ backgroundColor: `${accent}1f`, color: accent }}
                   >
                     <FontAwesomeIcon icon={t.icon} />
@@ -138,7 +140,7 @@ function ValueByTeamScene({ metadata = {} }) {
                     <p className={`text-xs uppercase tracking-wider ${tagText}`}>{t.tag}</p>
                   </div>
                 </div>
-                <ul className="space-y-2.5">
+                <ul className={dense ? 'space-y-1' : 'space-y-2.5'}>
                   {t.points.slice(0, 3).map((pt, i) => (
                     <li key={i} className="flex items-start gap-2.5">
                       <span
@@ -153,9 +155,9 @@ function ValueByTeamScene({ metadata = {} }) {
             ))}
           </div>
 
-          <div className={`mt-auto rounded-2xl border flex items-stretch overflow-hidden ${cardBg}`}>
+          <div className={`mt-auto shrink-0 rounded-2xl border flex items-stretch overflow-hidden ${cardBg}`}>
             <div
-              className="flex items-center gap-3 px-6 py-4 shrink-0"
+              className={`flex items-center gap-3 px-6 shrink-0 ${dense ? 'py-2.5' : 'py-4'}`}
               style={{ backgroundColor: accent }}
             >
               <FontAwesomeIcon
@@ -164,13 +166,13 @@ function ValueByTeamScene({ metadata = {} }) {
                 style={{ color: isDark ? '#0B1628' : '#fff' }}
               />
               <span
-                className="font-headline font-extrabold leading-none text-4xl md:text-5xl"
+                className={`font-headline font-extrabold leading-none ${dense ? 'text-3xl md:text-4xl' : 'text-4xl md:text-5xl'}`}
                 style={{ color: isDark ? '#0B1628' : '#fff' }}
               >
                 {impactStat}
               </span>
             </div>
-            <div className="flex-1 min-w-0 px-5 py-3 flex flex-col justify-center">
+            <div className={`flex-1 min-w-0 px-5 flex flex-col justify-center ${dense ? 'py-2' : 'py-3'}`}>
               <p
                 className="text-xs font-semibold uppercase tracking-wider mb-0.5"
                 style={{ color: accent }}

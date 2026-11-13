@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useSceneConfiguration } from '../components/SceneSettings'
 import { SCENE_REGISTRY } from './sceneRegistry'
-import { DECK_PRESETS, DEFAULT_PRESET_ID, presetConfig } from './deckPresets'
+import { DECK_PRESETS, DEFAULT_PRESET_ID, presetConfig, presetDuplicates } from './deckPresets'
 
 const STORAGE_KEY = 'presentation-scene-config'
 const ALL_IDS = SCENE_REGISTRY.map((s) => s.id)
@@ -71,7 +71,9 @@ describe('scene reachability', () => {
 
   it('every preset names only scenes that exist', () => {
     for (const preset of DECK_PRESETS) {
-      expect(preset.sceneIds.filter((id) => !ALL_IDS.includes(id))).toEqual([])
+      // Copies a preset ships (appendix layouts) count as existing.
+      const known = [...ALL_IDS, ...presetDuplicates(preset.id).map((d) => d.id)]
+      expect(preset.sceneIds.filter((id) => !known.includes(id))).toEqual([])
     }
   })
 })

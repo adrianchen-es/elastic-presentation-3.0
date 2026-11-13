@@ -60,6 +60,8 @@ function ElasticValueScene({ metadata = {} }) {
 
   const heroCols = balancedColumns(heroStats.length, 4)
   const statCols = balancedColumns(stats.length, 4)
+  // Hero cards, a stats row and the bottom line leave little height; tighten so the bottom line keeps its space.
+  const dense = stats.length >= 4
 
   return (
     <div className="flex flex-col h-full w-full px-8 py-6 overflow-hidden">
@@ -71,12 +73,12 @@ function ElasticValueScene({ metadata = {} }) {
           subtitle={subtitle}
         />
 
-        <div className="flex-1 min-h-0 flex flex-col gap-4">
-          <div className="grid gap-4" style={{ gridTemplateColumns: gridColumnsStyle(heroCols) }}>
+        <div className={`flex-1 min-h-0 flex flex-col ${dense ? 'gap-3' : 'gap-4'}`}>
+          <div className={`grid ${dense ? 'gap-3' : 'gap-4'}`} style={{ gridTemplateColumns: gridColumnsStyle(heroCols) }}>
             {heroStats.map((s, i) => (
               <div
                 key={i}
-                className={`rounded-2xl border p-5 flex flex-col gap-2 ${heroBg}`}
+                className={`rounded-2xl border flex flex-col ${dense ? 'p-4 gap-1.5' : 'p-5 gap-2'} ${heroBg}`}
               >
                 <span
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
@@ -95,13 +97,13 @@ function ElasticValueScene({ metadata = {} }) {
             ))}
           </div>
 
-          <div className="grid gap-4" style={{ gridTemplateColumns: gridColumnsStyle(statCols) }}>
+          <div className={`grid ${dense ? 'gap-3' : 'gap-4'}`} style={{ gridTemplateColumns: gridColumnsStyle(statCols) }}>
             {stats.map((s, i) => (
               <div
                 key={i}
-                className={`rounded-xl border px-5 py-4 flex flex-col gap-1 ${statBg}`}
+                className={`rounded-xl border px-5 flex flex-col gap-1 ${dense ? 'py-2.5' : 'py-4'} ${statBg}`}
               >
-                <span className={`font-headline font-bold leading-none text-3xl ${headText}`}>
+                <span className={`font-headline font-bold leading-none ${dense ? 'text-2xl' : 'text-3xl'} ${headText}`}>
                   {s.value}
                 </span>
                 <span className={`text-sm leading-snug ${mutedText}`}>{s.label}</span>
@@ -110,7 +112,7 @@ function ElasticValueScene({ metadata = {} }) {
           </div>
 
           <div
-            className="mt-auto rounded-2xl border p-5 flex items-center gap-4"
+            className={`mt-auto shrink-0 rounded-2xl border flex items-center gap-4 ${dense ? 'p-3.5' : 'p-5'}`}
             style={{
               backgroundColor: `${accent}12`,
               borderColor: `${accent}40`,

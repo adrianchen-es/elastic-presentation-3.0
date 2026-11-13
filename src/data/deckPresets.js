@@ -199,3 +199,9 @@ export function presetSeed(presetId) {
     sceneMetadata: { ...(preset?.sceneMetadata || {}) },
   }
 }
+
+// Scene copies a preset needs (for example a layout reused for appendix slides).
+// Entries look like { id: 'value-by-team~2', sourceId: 'value-by-team', label }.
+export function presetDuplicates(presetId) {
+  return [...(getPreset(presetId)?.duplicates || [])]
+}

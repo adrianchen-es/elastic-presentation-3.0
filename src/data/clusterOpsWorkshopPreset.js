@@ -2,8 +2,11 @@
 //
 //   Tell 1 (about 10 min): hero, agenda, the four data operations (kept brief),
 //                          then the eight areas by symptom.
-//   Show   (about 16 min): four live stops in Kibana, two topics per stop.
+//   Show   (about 16 min): live in Kibana. Health first, then four stops, two topics per stop.
 //   Tell 2 (about 4 min):  the operating habits to take away.
+//   Appendix (not timed):  the health APIs in detail, then a symptom, cause and call
+//                          reference for all eight topics. Skipped in the room, used for questions
+//                          and the handout.
 //
 // The data operations slide condenses the "Data Operations" request lifecycle deck
 // (index, delete, update, search). The demo stops cover the eight topics:
@@ -19,7 +22,7 @@ export const CLUSTER_OPS_PRESET = {
   id: 'cluster-ops-workshop',
   label: 'Workshop: Cluster Operations',
   description:
-    'A 30 minute cluster operations and administration workshop. A short look at how the four data operations use resources, the eight areas where clusters hurt, then four live Kibana demo stops.',
+    'A 30 minute cluster operations and administration workshop. A short look at how the four data operations use resources, the eight areas where clusters hurt, then live Kibana demos starting with the health APIs. Appendix covers the health APIs and a reference for all eight topics.',
   sceneIds: [
     'hero',
     'agenda',
@@ -27,6 +30,15 @@ export const CLUSTER_OPS_PRESET = {
     'problem-patterns',
     'value-by-team',
     'platform-value',
+    // Appendix, after the close on purpose. 'value-by-team~2' and '~3' are copies of the
+    // demo layout, created when the preset is applied (see `duplicates` below).
+    'elastic-value',
+    'value-by-team~2',
+    'value-by-team~3',
+  ],
+  duplicates: [
+    { id: 'value-by-team~2', sourceId: 'value-by-team', label: 'Appendix B: Reference, topics 1 to 4' },
+    { id: 'value-by-team~3', sourceId: 'value-by-team', label: 'Appendix C: Reference, topics 5 to 8' },
   ],
   durations: {
     hero: '1 min',
@@ -35,6 +47,9 @@ export const CLUSTER_OPS_PRESET = {
     'problem-patterns': '4 min',
     'value-by-team': '16 min',
     'platform-value': '4 min',
+    'elastic-value': '0 min',
+    'value-by-team~2': '0 min',
+    'value-by-team~3': '0 min',
   },
   sceneMetadata: {
     hero: {
@@ -54,12 +69,12 @@ export const CLUSTER_OPS_PRESET = {
       subtitle: '30 minutes, with the demos live in Kibana',
       items: [
         { time: '8 min', title: 'How data operations use resources, and the eight areas where clusters hurt', sceneIds: [] },
-        { time: '16 min', title: 'Live demo: four stops through the diagnostics, two topics per stop', sceneIds: [] },
+        { time: '16 min', title: 'Live demo: cluster health first, then four stops through the diagnostics', sceneIds: [] },
         { time: '4 min', title: 'Operating habits to take away', sceneIds: [] },
       ],
       speakerNotes: [
         'TELL, 1 min. Roadmap for the room.',
-        'Block one is short on purpose. Block two is where we spend the time.',
+        'Block one is short on purpose. Block two is where we spend the time. Appendix slides after the close hold the detail for questions.',
         'Ask who owns capacity, who owns ingest and who owns restores today. It shapes which demo stop to linger on.',
       ].join('\n'),
     },
@@ -156,10 +171,17 @@ export const CLUSTER_OPS_PRESET = {
     'value-by-team': {
       title: 'Live demo',
       eyebrow: 'Live demo',
-      titlePlain: 'Four stops, ',
-      titleAccent: 'eight diagnostics',
+      titlePlain: 'Health first, ',
+      titleAccent: 'then eight diagnostics',
       subtitle: 'Kibana Dev Tools plus the management UI, on a lab cluster.',
       teams: [
+        {
+          id: 'health',
+          title: 'Health first',
+          tag: 'Start here',
+          icon: 'life-ring',
+          points: ['_cat/health, _cluster/health', '_health_report indicators', 'Unassigned and pending tasks'],
+        },
         {
           id: 'shape',
           title: 'Shards and memory',
@@ -185,22 +207,23 @@ export const CLUSTER_OPS_PRESET = {
           id: 'recovery',
           title: 'Queries and recovery',
           tag: 'Topics 7 and 8',
-          icon: 'life-ring',
-          points: ['Slow log, _tasks, profile', '_health_report', 'Snapshot restore drill'],
+          icon: 'file-shield',
+          points: ['Slow log, _tasks, profile', 'Masters, zones, node loss', 'Snapshot restore drill'],
         },
       ],
       impactEyebrow: 'The point',
-      impactStat: '8 checks',
-      impactLabel: 'each a single API call',
-      impactDetail: 'Symptom first, then the call that names the cause.',
+      impactStat: '1 call',
+      impactLabel: 'to know where to look',
+      impactDetail: 'Health first, then the diagnostic for the area it points at.',
       impactIcon: 'stopwatch',
       speakerNotes: [
-        'SHOW, about 16 min, about 4 min per stop. Leave this slide up for 20 seconds, then switch to Kibana. Lab data, say so once.',
+        'SHOW, about 16 min, about 3 min per stop. Leave this slide up for 20 seconds, then switch to Kibana. Lab data, say so once.',
+        'Stop 0, health first. GET _cat/health?v for one line: status, node count, shards, unassigned, pending tasks. GET _cluster/health?level=indices to see which indices are red or yellow. Then GET _health_report: each indicator gives a status, the impact, the cause and a diagnosis. Say the rule: green all shards assigned, yellow a replica is missing, red a primary is missing. Start every investigation here and let it pick the next stop. Detail is in Appendix A.',
         'Stop 1, shards and memory. _cat/shards?v&s=store:desc and _cluster/stats for the shard count and size spread. _cluster/allocation/explain on an unassigned or hot shard. Then _nodes/stats/jvm,breaker for heap, GC and breaker trips. Show the same in Stack Monitoring. Point out heap past about 31 GB loses compressed oops.',
         'Stop 2, mappings and lifecycle. GET index/_mapping and count fields by index. Show index.mapping.total_fields.limit. Then Index Lifecycle Policies in Stack Management and _ilm/explain for an index stuck in an error step. Show data stream stats and which tier holds what.',
         'Stop 3, capacity and ingest. _cat/allocation?v for disk per node, then the watermark settings (low, high, flood stage) and what flood stage does: read-only indices. Then _nodes/stats/thread_pool for write queue and rejections, and indexing pressure stats. Link back to the slowest shard point from slide three.',
-        'Stop 4, queries and recovery. Search slow log settings, _tasks for a long-running search, and the profile API on one query. Then GET _health_report. Finish in Snapshot and Restore: show a policy and restore one snapshot to a new index name. A snapshot never test-restored is a hope, not a backup.',
-        'If time is short, skip stop 2 mapping detail and keep the ILM explain call.',
+        'Stop 4, queries and recovery. Search slow log settings, _tasks for a long-running search, and the profile API on one query. Then the resilience layout: dedicated masters, zone awareness, what happens when a node drops. Finish in Snapshot and Restore: show a policy and restore one snapshot to a new index name. A snapshot never test-restored is a hope, not a backup.',
+        'If time is short, skip stop 2 mapping detail and keep the ILM explain call. Never skip stop 0.',
         'Pre-flight: have the Dev Tools console tabs saved ahead of time so no one watches you type URLs.',
       ].join('\n'),
     },
@@ -237,6 +260,134 @@ export const CLUSTER_OPS_PRESET = {
         'Alert early: ILM errors and the low watermark are both silent until they are not.',
         'Rehearse: restores and failovers are where untested assumptions show up.',
         'Ask: choose the two areas with the most incidents and book a health review. Offer to run the same checks against their production cluster.',
+      ].join('\n'),
+    },
+    // Appendix A: the health APIs in detail.
+    'elastic-value': {
+      title: 'Appendix A: Health APIs',
+      eyebrow: 'Appendix A',
+      titlePlain: 'Start with ',
+      titleAccent: 'health',
+      subtitle: 'Three calls, from a quick glance to the root cause. The report groups its checks into indicators.',
+      heroStats: [
+        { value: '_cat/health', icon: 'terminal', label: 'One line: status, nodes, shards, unassigned. Add the v parameter for headers.' },
+        { value: '_cluster/health', icon: 'gauge-high', label: 'Adds pending tasks and wait_for_status. Add level=indices to find the red index. A long pending queue points at oversharding.' },
+        { value: '_health_report', icon: 'life-ring', label: 'Indicators with impact, cause and diagnosis. Set verbose=false for a quick pass.' },
+      ],
+      stats: [
+        { value: 'shards', label: 'shards_availability, shards_capacity: unassigned shards, headroom per node' },
+        { value: 'disk', label: 'disk: nodes near or past the watermarks' },
+        { value: 'ilm', label: 'ilm, data_stream_lifecycle: stuck or erroring lifecycle' },
+        { value: 'snapshots', label: 'repository_integrity, slm: repository readable, policies running' },
+      ],
+      bottomLineEyebrow: 'Reading it',
+      bottomLine: 'Green: all shards assigned. Yellow: a replica is missing. Red: a primary is missing. Then follow the diagnosis.',
+      bottomLineIcon: 'bullseye',
+      speakerNotes: [
+        'APPENDIX A. Use for questions, not in the timed run.',
+        '_cat/health is the glance. _cluster/health adds pending tasks and lets scripts block with wait_for_status. level=indices or level=shards narrows down the red or yellow part. A long pending_tasks queue (_cluster/pending_tasks) points at oversharding or mapping churn.',
+        '_health_report is the one to teach. Each indicator returns a status, a symptom, the impact on users, and a diagnosis with a suggested action. Use it first in an incident.',
+        'Other indicators: master_is_stable, plus the four on the slide. Map them to topics: shards_availability and shards_capacity to topic 1, disk to topic 5, ilm and data_stream_lifecycle to topic 4, repository_integrity, slm and master_is_stable to topic 8.',
+        'Alerting: alert on the report status and on the disk and ilm indicators, not only on cluster status.',
+      ].join('\n'),
+    },
+    // Appendix B and C: a symptom, cause and call reference for the eight topics.
+    'value-by-team~2': {
+      title: 'Appendix B: Reference 1 to 4',
+      eyebrow: 'Appendix B',
+      titlePlain: 'Reference: ',
+      titleAccent: 'topics 1 to 4',
+      subtitle: 'Symptom, cause, then the call to run.',
+      teams: [
+        {
+          id: 'shards',
+          title: '1 Shard strategy',
+          tag: 'Shape',
+          icon: 'cubes',
+          points: ['Slow state updates, heap pressure', 'Many tiny shards, hot spots', 'Run: _cat/shards, allocation/explain'],
+        },
+        {
+          id: 'heap',
+          title: '2 Heap, memory, JVM',
+          tag: 'Memory',
+          icon: 'server',
+          points: ['Breaker trips, GC pauses, node drops', 'Heap past 31 GB, fielddata, big aggs', 'Run: _nodes/stats/jvm,breaker'],
+        },
+        {
+          id: 'mapping',
+          title: '3 Mapping explosion',
+          tag: 'Shape',
+          icon: 'diagram-project',
+          points: ['Mapping errors, rising heap', 'Unbounded dynamic keys, deep nesting', 'Run: _mapping, total_fields.limit'],
+        },
+        {
+          id: 'lifecycle',
+          title: '4 Lifecycle and tiering',
+          tag: 'Data',
+          icon: 'layer-group',
+          points: ['Storage cost climbs, ILM stuck', 'No rollover, wrong tier mix', 'Run: _ilm/explain, data stream stats'],
+        },
+      ],
+      impactEyebrow: 'Rule of thumb',
+      impactStat: '10 to 50 GB',
+      impactLabel: 'target size per shard',
+      impactDetail: 'And under 1,000 shards per node by default (cluster.max_shards_per_node).',
+      impactIcon: 'cubes',
+      speakerNotes: [
+        'APPENDIX B. Reference for topics 1 to 4. Not in the timed run.',
+        'Each card is symptom, then cause, then the call to run.',
+        'Heap: keep it at or below half of RAM and under the compressed oops threshold, about 31 GB. More heap is not better.',
+        'Mapping: set index.mapping.total_fields.limit deliberately and use flattened or explicit mappings for unbounded keys.',
+        'Lifecycle: ILM errors are silent until storage fills. Check _ilm/explain on a schedule.',
+      ].join('\n'),
+    },
+    'value-by-team~3': {
+      title: 'Appendix C: Reference 5 to 8',
+      eyebrow: 'Appendix C',
+      titlePlain: 'Reference: ',
+      titleAccent: 'topics 5 to 8',
+      subtitle: 'Symptom, cause, then the call to run.',
+      teams: [
+        {
+          id: 'capacity',
+          title: '5 Capacity, watermarks',
+          tag: 'Capacity',
+          icon: 'database',
+          points: ['Read-only indices, unassigned shards', 'No headroom for merges, recovery', 'Run: _cat/allocation, watermarks'],
+        },
+        {
+          id: 'ingest',
+          title: '6 Ingest backpressure',
+          tag: 'Flow',
+          icon: 'bolt',
+          points: ['429s, indexing lag, retries', 'Bulk size, heavy pipelines, refresh', 'Run: thread_pool, indexing_pressure'],
+        },
+        {
+          id: 'query',
+          title: '7 Query performance',
+          tag: 'Flow',
+          icon: 'magnifying-glass',
+          points: ['Slow dashboards, rejections', 'Leading wildcards, deep paging, aggs', 'Run: slow log, _tasks, profile'],
+        },
+        {
+          id: 'resilience',
+          title: '8 Resilience, recovery',
+          tag: 'Recovery',
+          icon: 'life-ring',
+          points: ['Long outages, failed restores', 'No masters, no zones, untested snaps', 'Run: _health_report, restore drill'],
+        },
+      ],
+      impactEyebrow: 'Default watermarks',
+      impactStat: '85/90/95%',
+      impactLabel: 'low, high and flood stage',
+      impactDetail: 'Flood stage makes indices read-only. Plan headroom for merges and recovery.',
+      impactIcon: 'gauge-high',
+      speakerNotes: [
+        'APPENDIX C. Reference for topics 5 to 8. Not in the timed run.',
+        'Watermarks: low stops new shards landing on the node, high moves shards off, flood stage sets indices read-only. After freeing space, newer versions release the block automatically.',
+        'Ingest: raise bulk size to a few MB to tens of MB, lengthen refresh_interval, and move heavy work out of ingest pipelines before adding nodes.',
+        'Query: enable the slow log with sensible thresholds before you need it.',
+        'Resilience: three dedicated masters across zones at scale, shard allocation awareness, and a restore drill at least quarterly.',
       ].join('\n'),
     },
   },

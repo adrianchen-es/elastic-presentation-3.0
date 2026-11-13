@@ -8,7 +8,7 @@ import {
   faDownload, faUpload, faArrowUp, faArrowDown,
   faLayerGroup
 } from '@fortawesome/free-solid-svg-icons'
-import { DECK_PRESETS, DEFAULT_PRESET_ID, CUSTOM_PRESET_ID, presetConfig, presetSeed } from '../data/deckPresets'
+import { DECK_PRESETS, DEFAULT_PRESET_ID, CUSTOM_PRESET_ID, presetConfig, presetSeed, presetDuplicates } from '../data/deckPresets'
 import { catalogSpeakerNotes, resolveCatalogScenario } from '../data/catalogScenarios'
 
 import DeckBuilder from './DeckBuilder'
@@ -91,7 +91,12 @@ export function useSceneConfiguration(initialScenes) {
 
   const applyPreset = (presetId) => {
     setConfig((prev) => {
-      const allIds = materializeScenes(initialScenes, prev.duplicates || []).map((s) => s.id)
+      // Copies the preset ships (appendix layouts) are added once, by id.
+      const duplicates = [...(prev.duplicates || [])]
+      for (const dup of presetDuplicates(presetId)) {
+        if (!duplicates.some((d) => d.id === dup.id)) duplicates.push(dup)
+      }
+      const allIds = materializeScenes(initialScenes, duplicates).map((s) => s.id)
       const preset = presetConfig(presetId, allIds)
       if (!preset) return prev
       // A preset that ships content (slide text, notes, timings) replaces those
@@ -106,6 +111,7 @@ export function useSceneConfiguration(initialScenes) {
         order: preset.order,
         enabledIds: preset.enabledIds,
         activePreset: presetId,
+        duplicates,
         durations: { ...(prev.durations || {}), ...seed.durations },
         sceneMetadata,
       }
