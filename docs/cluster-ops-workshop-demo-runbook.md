@@ -72,7 +72,7 @@ Topic 2, heap, memory and JVM. Symptom: circuit breaker trips, GC pauses, nodes 
 
 | API | What it shows | What to say |
 |---|---|---|
-| `GET _cat/shards?v&s=store:desc&h=index,shard,prirep,state,docs,store,node` | Every shard, largest first | Look at the size spread. A long tail of tiny shards is oversharding. Target 10 to 50 GB per shard. |
+| `GET _cat/shards?v&s=store:desc&h=index,shard,prirep,state,docs,store,node` | Every shard, largest first | Look at the size spread. A long tail of tiny shards is oversharding. Target 10 to 50 GB per shard. For logsdb indices, target 10 to 30 GB and at most 200M docs per shard, whichever comes first (the `docs` column shows it). |
 | `GET _cat/indices?v&s=pri.store.size:desc` | Index sizes and primary counts | Spot indices with more primaries than their data justifies. |
 | `GET _cluster/stats?filter_path=indices.count,indices.shards,nodes.count,nodes.jvm` | Totals for shards, indices, nodes, heap | Shards per node against the default limit. |
 | `GET _cluster/settings?include_defaults=true&filter_path=*.cluster.max_shards_per_node` | The shard per node limit | Default is 1,000 per non-frozen data node, enforced cluster-wide, replicas included. A guard rail, not a target. Hitting it blocks anything that adds shards: create, restore, open, more replicas. Frozen nodes use `max_shards_per_node.frozen`, default 3,000. |
