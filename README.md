@@ -97,6 +97,7 @@ content edits are preserved when switching presets. The default preset is
 | **Observability** | `observability` | The Observability story — from efficient datastore to the autonomous AI SRE (Nightshift). Uses the 14 `obs-*` / `nightshift-*` scenes. |
 | **Security** | `security` | Modern threat landscape → AI-driven SecOps → tool consolidation, governance, and commercials. |
 | **Search** | `search` | The Search story — lexical foundations → vector scale → GPU → inference → context layer, then AI and ES\|QL. |
+| **AI Showcase** | `ai-showcase` | Short AI demo flow: the self-running Scene Tour, then the Knowledge From Video one-pager. |
 | **All Scenes** | `all-scenes` | Everything enabled in registration order — the full library. Newly added scenes are always included. |
 | **No Scenes** | `no-scenes` | Blank slate — only Hero. Build a custom flow from scratch. |
 

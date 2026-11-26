@@ -161,6 +161,12 @@ export const DECK_PRESETS = [
       'next-steps',
     ],
   },
+  {
+    id: 'ai-showcase',
+    label: 'AI Showcase',
+    description: 'A short AI demo flow: the self-running Scene Tour, then the Knowledge From Video one-pager.',
+    sceneIds: ['scene-tour', 'video-knowledge'],
+  },
 ]
 
 export const DEFAULT_PRESET_ID = 'new-prospect'
